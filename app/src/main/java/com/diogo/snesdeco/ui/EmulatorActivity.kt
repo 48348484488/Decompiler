@@ -32,6 +32,7 @@ class EmulatorActivity : AppCompatActivity() {
     private var reportedSampleCheck = false
     private var reportedWriteError = false
     @Volatile private var sandboxFrozen = false
+    private var savedState: ByteArray? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -284,6 +285,8 @@ class EmulatorActivity : AppCompatActivity() {
                 " | EXT: ${com.diogo.snesdeco.emu.ExtractionSession.spriteCount()}spr ${com.diogo.snesdeco.emu.ExtractionSession.paletteCount()}pal"
             else ""
             cdlReadout.text = "CDL %.1f%%%s".format(pct, ext)
+            // Live capture bar at the top.
+            findViewById<CoverageBar>(R.id.liveCoverage)?.setCdl(cdl)
         }
     }
 
@@ -346,6 +349,36 @@ class EmulatorActivity : AppCompatActivity() {
                 }
                 .setNeutralButton("Cancelar", null)
                 .show()
+        }
+
+        // Save/Load scene = full save state. Reproduces the whole scene
+        // (all RAM/VRAM/registers), reloads identical and keeps playing.
+        findViewById<android.widget.Button>(R.id.btnSaveState).setOnClickListener {
+            thread {
+                val state = try { NativeBridge.nativeSaveState() } catch (t: Throwable) { ByteArray(0) }
+                runOnUiThread {
+                    if (state.isNotEmpty()) {
+                        savedState = state
+                        Toast.makeText(this, "Cena salva (${state.size / 1024} KB). Use ▶ Carregar cena para voltar exatamente aqui.", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(this, "Não consegui salvar a cena.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        findViewById<android.widget.Button>(R.id.btnLoadState).setOnClickListener {
+            val state = savedState
+            if (state == null) {
+                Toast.makeText(this, "Nenhuma cena salva ainda. Use 📸 Salvar cena primeiro.", Toast.LENGTH_SHORT).show()
+            } else {
+                thread {
+                    val ok = try { NativeBridge.nativeLoadState(state) } catch (t: Throwable) { false }
+                    runOnUiThread {
+                        Toast.makeText(this, if (ok) "Cena recarregada — idêntica, jogável a partir daqui." else "Falha ao carregar a cena.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
         }
 
         val sandboxBtn = findViewById<android.widget.Button>(R.id.btnSandbox)

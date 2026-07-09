@@ -42,6 +42,13 @@
         android:padding="4dp"
         android:text="CDL 0%" />
 
+    <com.diogo.snesdeco.ui.CoverageBar
+        android:id="@+id/liveCoverage"
+        android:layout_width="220dp"
+        android:layout_height="10dp"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="4dp" />
+
     <!-- ===== LEFT SIDE ===== -->
 
     <!-- L shoulder, upper-left -->
@@ -264,6 +271,38 @@
                 android:paddingEnd="16dp"
                 android:text="🧪 Sandbox: OFF"
                 android:textColor="#7CFF9E"
+                android:textSize="12sp"
+                android:textAllCaps="false" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="6dp">
+
+            <Button
+                android:id="@+id/btnSaveState"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:background="@drawable/btn_pill"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="📸 Salvar cena"
+                android:textColor="#FFD166"
+                android:textSize="12sp"
+                android:textAllCaps="false" />
+
+            <Button
+                android:id="@+id/btnLoadState"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/btn_pill"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:text="▶ Carregar cena"
+                android:textColor="#9AD8FF"
                 android:textSize="12sp"
                 android:textAllCaps="false" />
         </LinearLayout>

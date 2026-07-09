@@ -29,6 +29,11 @@ object NativeBridge {
     external fun nativeBoundaryHit(): Boolean
     external fun nativeClearBoundary()
     external fun nativeBoundaryOffset(): Int
+    // Save states (full scene snapshot) + live capture stats
+    external fun nativeSaveState(): ByteArray
+    external fun nativeLoadState(data: ByteArray): Boolean
+    external fun nativeCapturedBytes(): Int
+    external fun nativeRomSize(): Int
     external fun nativeGetCgram(): ByteArray
     external fun nativeGetVram(): ByteArray
     external fun nativeGetOam(): IntArray

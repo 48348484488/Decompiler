@@ -368,6 +368,55 @@ Java_com_diogo_snesdeco_emu_NativeBridge_nativeBoundaryOffset(JNIEnv *, jobject)
 	return (jint) S9xCdlBoundaryOffset();
 }
 
+// ---- Save states: full machine snapshot (RAM+VRAM+regs), returns/loads bytes.
+// This is what actually reproduces a whole scene: freeze on the Natsume screen,
+// then load it back later - identical and still playable from that point.
+JNIEXPORT jbyteArray JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeSaveState(JNIEnv *env, jobject)
+{
+	if (!s9x_rom_loaded) return env->NewByteArray(0);
+	uint32_t size = S9xFreezeSize();
+	if (size == 0) return env->NewByteArray(0);
+	std::vector<uint8_t> buf(size);
+	if (S9xFreezeGameMem(buf.data(), size) == FALSE)
+		return env->NewByteArray(0);
+	jbyteArray arr = env->NewByteArray((jsize) size);
+	if (arr == nullptr) return nullptr;
+	env->SetByteArrayRegion(arr, 0, (jsize) size, reinterpret_cast<const jbyte *>(buf.data()));
+	return arr;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeLoadState(JNIEnv *env, jobject, jbyteArray data)
+{
+	if (!s9x_rom_loaded) return JNI_FALSE;
+	jsize len = env->GetArrayLength(data);
+	if (len <= 0) return JNI_FALSE;
+	std::vector<uint8_t> buf((size_t) len);
+	env->GetByteArrayRegion(data, 0, len, reinterpret_cast<jbyte *>(buf.data()));
+	int ok = S9xUnfreezeGameMem(buf.data(), (uint32_t) len);
+	return ok == SUCCESS ? JNI_TRUE : JNI_FALSE;
+}
+
+// Live capture stats for the on-screen progress UI.
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeCapturedBytes(JNIEnv *, jobject)
+{
+	size_t sz = 0;
+	const uint8_t *map = S9xCdlGetMap(&sz);
+	if (map == nullptr) return 0;
+	int coded = 0;
+	for (size_t i = 0; i < sz; i++)
+		if (map[i] & 0x03) coded++;
+	return coded;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeRomSize(JNIEnv *, jobject)
+{
+	return (jint) Memory.CalculatedSize;
+}
+
 // Snapshot the 256-entry CGRAM palette (BGR555, 2 bytes each = 512 bytes).
 JNIEXPORT jbyteArray JNICALL
 Java_com_diogo_snesdeco_emu_NativeBridge_nativeGetCgram(JNIEnv *env, jobject)
