@@ -36,6 +36,9 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, RomExplorerActivity::class.java))
         }
 
+        findViewById<TextView>(R.id.versionText).text =
+            "v${com.diogo.snesdeco.BuildConfig.VERSION_NAME} (code ${com.diogo.snesdeco.BuildConfig.VERSION_CODE})"
+
         refreshStatus()
     }
 

@@ -82,4 +82,17 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginBottom="12dp" />
 
+    <TextView
+        android:id="@+id/versionText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="build"
+        android:textColor="@color/text_secondary"
+        android:textSize="10sp"
+        android:fontFamily="monospace"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>
