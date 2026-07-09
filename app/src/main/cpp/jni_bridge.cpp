@@ -337,6 +337,37 @@ Java_com_diogo_snesdeco_emu_NativeBridge_nativeIsCdlRecording(JNIEnv *, jobject)
 	return S9xCdlIsRecording() ? JNI_TRUE : JNI_FALSE;
 }
 
+// Sandbox mode: freeze at the edge of the captured slice.
+JNIEXPORT void JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeSetSandbox(JNIEnv *, jobject, jboolean on)
+{
+	S9xCdlSetSandbox(on == JNI_TRUE);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeIsSandbox(JNIEnv *, jobject)
+{
+	return S9xCdlIsSandbox() ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeBoundaryHit(JNIEnv *, jobject)
+{
+	return S9xCdlBoundaryHit() ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT void JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeClearBoundary(JNIEnv *, jobject)
+{
+	S9xCdlClearBoundary();
+}
+
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeBoundaryOffset(JNIEnv *, jobject)
+{
+	return (jint) S9xCdlBoundaryOffset();
+}
+
 // Snapshot the 256-entry CGRAM palette (BGR555, 2 bytes each = 512 bytes).
 JNIEXPORT jbyteArray JNICALL
 Java_com_diogo_snesdeco_emu_NativeBridge_nativeGetCgram(JNIEnv *env, jobject)

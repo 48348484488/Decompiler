@@ -31,6 +31,7 @@ class EmulatorActivity : AppCompatActivity() {
     private var totalSamplesSeen = 0L
     private var reportedSampleCheck = false
     private var reportedWriteError = false
+    @Volatile private var sandboxFrozen = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -134,7 +135,31 @@ class EmulatorActivity : AppCompatActivity() {
             var nextFrameTime = System.nanoTime()
 
             while (running) {
+                // Sandbox: if we've hit the edge of the captured slice, stop
+                // advancing the game (freeze on the last captured frame) but
+                // keep the loop alive so the screen stays shown.
+                if (sandboxFrozen) {
+                    try { Thread.sleep(50) } catch (e: InterruptedException) {}
+                    continue
+                }
+
                 NativeBridge.nativeRunFrame()
+
+                // Detect boundary right after running: did the game try to
+                // execute code that was never captured?
+                if (NativeBridge.nativeIsSandbox() && NativeBridge.nativeBoundaryHit() && !sandboxFrozen) {
+                    sandboxFrozen = true
+                    val off = NativeBridge.nativeBoundaryOffset()
+                    runOnUiThread {
+                        Toast.makeText(
+                            this,
+                            "⏸ Congelado: o jogo chegou no fim do trecho capturado (tentou rodar código novo em offset %06X). Tudo que rodou até aqui É código capturado.".format(off),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                    // Render the last good frame once more, then idle.
+                    continue
+                }
 
                 val w = NativeBridge.nativeGetFrameWidth()
                 val h = NativeBridge.nativeGetFrameHeight()
@@ -277,6 +302,32 @@ class EmulatorActivity : AppCompatActivity() {
 
         findViewById<android.widget.Button>(R.id.btnLab).setOnClickListener {
             openLab()
+        }
+
+        val sandboxBtn = findViewById<android.widget.Button>(R.id.btnSandbox)
+        sandboxBtn.setOnClickListener {
+            val turnOn = !NativeBridge.nativeIsSandbox()
+            if (turnOn) {
+                // Sandbox replays within the captured set: stop recording,
+                // clear any boundary, reset so it runs from the start, and
+                // freeze the moment execution leaves what was captured.
+                NativeBridge.nativeSetCdlRecording(false)
+                NativeBridge.nativeClearBoundary()
+                NativeBridge.nativeSetSandbox(true)
+                NativeBridge.nativeResetEmu()
+                sandboxFrozen = false
+                sandboxBtn.text = "🧪 Sandbox: ON"
+                Toast.makeText(
+                    this,
+                    "Sandbox ligado: rodando só o trecho capturado. Vai congelar quando o jogo tentar executar código que você ainda não capturou.",
+                    Toast.LENGTH_LONG
+                ).show()
+            } else {
+                NativeBridge.nativeSetSandbox(false)
+                sandboxFrozen = false
+                sandboxBtn.text = "🧪 Sandbox: OFF"
+                Toast.makeText(this, "Sandbox desligado: ROM roda normal de novo.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

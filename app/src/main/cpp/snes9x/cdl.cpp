@@ -7,9 +7,28 @@ static uint8_t  s9x_cdl_bank = 0;
 static uint16_t s9x_cdl_addr = 0;
 static uint32_t s9x_cdl_offset = 0;
 static bool     s9x_cdl_recording = true;
+static bool     s9x_cdl_sandbox = false;
+static bool     s9x_cdl_boundary = false;
+static uint32_t s9x_cdl_boundary_off = 0;
 
 void S9xCdlSetRecording(bool on) { s9x_cdl_recording = on; }
 bool S9xCdlIsRecording(void) { return s9x_cdl_recording; }
+
+void S9xCdlSetSandbox(bool on)
+{
+	s9x_cdl_sandbox = on;
+	s9x_cdl_boundary = false;
+}
+bool S9xCdlIsSandbox(void) { return s9x_cdl_sandbox; }
+bool S9xCdlBoundaryHit(void) { return s9x_cdl_boundary; }
+void S9xCdlClearBoundary(void) { s9x_cdl_boundary = false; }
+uint32_t S9xCdlBoundaryOffset(void) { return s9x_cdl_boundary_off; }
+
+bool S9xCdlIsCaptured(uint32_t romOffset)
+{
+	if (romOffset >= s9x_cdl_map.size()) return false;
+	return (s9x_cdl_map[romOffset] & (CDL_FLAG_CODE | CDL_FLAG_OPERAND)) != 0;
+}
 
 void S9xCdlInit(size_t romSize)
 {
@@ -23,6 +42,18 @@ void S9xCdlReset(void)
 
 void S9xCdlMarkExec(uint32_t romOffset, int length)
 {
+	// Sandbox mode: don't record; instead flag when execution reaches code
+	// that was never captured. That's the boundary of the captured slice.
+	if (s9x_cdl_sandbox)
+	{
+		if (!s9x_cdl_boundary && !S9xCdlIsCaptured(romOffset))
+		{
+			s9x_cdl_boundary = true;
+			s9x_cdl_boundary_off = romOffset;
+		}
+		return;
+	}
+
 	if (!s9x_cdl_recording)
 		return;
 	if (s9x_cdl_map.empty())

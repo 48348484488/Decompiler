@@ -23,6 +23,12 @@ object NativeBridge {
     // CDL recording control + sprite-ripping snapshots
     external fun nativeSetCdlRecording(on: Boolean)
     external fun nativeIsCdlRecording(): Boolean
+    // Sandbox: freeze at the boundary of the captured slice
+    external fun nativeSetSandbox(on: Boolean)
+    external fun nativeIsSandbox(): Boolean
+    external fun nativeBoundaryHit(): Boolean
+    external fun nativeClearBoundary()
+    external fun nativeBoundaryOffset(): Int
     external fun nativeGetCgram(): ByteArray
     external fun nativeGetVram(): ByteArray
     external fun nativeGetOam(): IntArray

@@ -22,6 +22,19 @@ void S9xCdlMarkExec(uint32_t romOffset, int length);
 void S9xCdlSetRecording(bool on);
 bool S9xCdlIsRecording(void);
 
+// Sandbox mode: when on, the CPU hook checks each executed address against the
+// captured CDL map. Hitting an address that was NOT previously captured trips
+// the boundary flag (and remembers where), so the app can freeze the emulator
+// exactly at the edge of what was captured. Requires recording to be OFF (you
+// capture first, then replay inside the captured set).
+void S9xCdlSetSandbox(bool on);
+bool S9xCdlIsSandbox(void);
+bool S9xCdlBoundaryHit(void);
+void S9xCdlClearBoundary(void);
+uint32_t S9xCdlBoundaryOffset(void);
+// Returns true if this offset was captured (code or operand) - used by the hook.
+bool S9xCdlIsCaptured(uint32_t romOffset);
+
 // Live "currently executing" program counter, for the real-time view.
 void S9xCdlSetCurrentPC(uint8_t bank, uint16_t addr, uint32_t romOffset);
 uint8_t S9xCdlGetCurrentBank(void);
