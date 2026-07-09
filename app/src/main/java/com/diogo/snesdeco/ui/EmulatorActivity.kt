@@ -30,6 +30,7 @@ class EmulatorActivity : AppCompatActivity() {
     private var frameCounter = 0
     private var totalSamplesSeen = 0L
     private var reportedSampleCheck = false
+    private var reportedWriteError = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -118,7 +119,13 @@ class EmulatorActivity : AppCompatActivity() {
                 val samples = NativeBridge.nativeGetAudioSamples()
 
                 if (samples.isNotEmpty()) {
-                    audioTrack?.write(samples, 0, samples.size)
+                    val written = audioTrack?.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING) ?: -999
+                    if (written < 0 && !reportedWriteError) {
+                        reportedWriteError = true
+                        runOnUiThread {
+                            Toast.makeText(this, "ERRO write audio: código $written", Toast.LENGTH_LONG).show()
+                        }
+                    }
                 }
                 totalSamplesSeen += samples.size
 
@@ -126,10 +133,13 @@ class EmulatorActivity : AppCompatActivity() {
                     reportedSampleCheck = true
                     val seen = totalSamplesSeen
                     val trackState = audioTrack?.playState
+                    val trackNull = audioTrack == null
                     runOnUiThread {
+                        val vw = videoView.width
+                        val vh = videoView.height
                         Toast.makeText(
                             this,
-                            "Diagnóstico: $seen amostras geradas em 120 frames | AudioTrack playState=$trackState",
+                            "DIAG: ImageView=${vw}x${vh}px, bitmap=${w}x${h}, samples=$seen, trackNull=$trackNull, playState=$trackState",
                             Toast.LENGTH_LONG
                         ).show()
                     }
@@ -158,13 +168,25 @@ class EmulatorActivity : AppCompatActivity() {
 
     private fun renderFrame(pixels: ShortArray, w: Int, h: Int) {
         if (w <= 0 || h <= 0 || pixels.isEmpty()) return
-        // A fresh Bitmap per frame avoids mutating one shared across threads
-        // (the old copyPixelsFromBuffer-on-shared-bitmap approach could race
-        // with the UI thread drawing it mid-update).
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565)
         bmp.copyPixelsFromBuffer(ShortBuffer.wrap(pixels))
+
+        // Scale up to the ImageView's real measured size in code, preserving
+        // the SNES aspect ratio. Doing the scaling here (rather than relying
+        // on the ImageView's scaleType) removes all ambiguity about density
+        // and match-constraint sizing that made the frame render tiny before.
+        val viewW = videoView.width
+        val viewH = videoView.height
+        val display = if (viewW > 0 && viewH > 0) {
+            val scale = minOf(viewW.toFloat() / w, viewH.toFloat() / h)
+            val dstW = (w * scale).toInt().coerceAtLeast(1)
+            val dstH = (h * scale).toInt().coerceAtLeast(1)
+            Bitmap.createScaledBitmap(bmp, dstW, dstH, false)
+        } else {
+            bmp
+        }
         runOnUiThread {
-            videoView.setImageBitmap(bmp)
+            videoView.setImageBitmap(display)
         }
     }
 
