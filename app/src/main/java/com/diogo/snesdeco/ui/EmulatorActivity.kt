@@ -122,11 +122,19 @@ class EmulatorActivity : AppCompatActivity() {
 
     private fun setupAudio() {
         try {
-            val sampleRate = 32040
+            val sampleRate = 48000
+            // Some OEM Androids (MIUI etc.) silence apps that never request
+            // audio focus; ask for it before playing.
+            try {
+                val am = getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+                @Suppress("DEPRECATION")
+                am.requestAudioFocus(null, android.media.AudioManager.STREAM_MUSIC, android.media.AudioManager.AUDIOFOCUS_GAIN)
+            } catch (_: Exception) { }
+
             var minBuf = AudioTrack.getMinBufferSize(
                 sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT
             )
-            if (minBuf <= 0) minBuf = sampleRate * 2 * 2 / 10 // ~100ms fallback if the device query fails
+            if (minBuf <= 0) minBuf = sampleRate * 2 * 2 / 10
             val track = AudioTrack.Builder()
                 .setAudioAttributes(
                     AudioAttributes.Builder()
@@ -230,6 +238,34 @@ class EmulatorActivity : AppCompatActivity() {
                     updateReadouts()
                 }
 
+                // Full-capture mode: every ~5s snapshot sprites+palette and
+                // dedupe into the session (runs off-thread, guarded by busy).
+                if (com.diogo.snesdeco.emu.ExtractionSession.enabled &&
+                    frameCounter % 300 == 0 &&
+                    com.diogo.snesdeco.emu.ExtractionSession.busy.compareAndSet(false, true)
+                ) {
+                    try {
+                        val oam = NativeBridge.nativeGetOam()
+                        val vram = NativeBridge.nativeGetVram()
+                        val cgram = NativeBridge.nativeGetCgram()
+                        val nb = NativeBridge.nativeGetObjNameBase()
+                        val ns = NativeBridge.nativeGetObjNameSelect()
+                        val ss = NativeBridge.nativeGetObjSizeSelect()
+                        thread {
+                            try {
+                                val groups = SpriteRipper.ripGroups(oam, vram, cgram, nb, ns, ss)
+                                com.diogo.snesdeco.emu.ExtractionSession.addSprites(groups)
+                                com.diogo.snesdeco.emu.ExtractionSession.addPalette(cgram)
+                                com.diogo.snesdeco.emu.ExtractionSession.captures++
+                            } finally {
+                                com.diogo.snesdeco.emu.ExtractionSession.busy.set(false)
+                            }
+                        }
+                    } catch (t: Throwable) {
+                        com.diogo.snesdeco.emu.ExtractionSession.busy.set(false)
+                    }
+                }
+
                 nextFrameTime += frameIntervalNs
                 val sleepNs = nextFrameTime - System.nanoTime()
                 if (sleepNs > 0) {
@@ -274,7 +310,10 @@ class EmulatorActivity : AppCompatActivity() {
 
         runOnUiThread {
             pcReadout.text = "PC: %02X:%04X".format(bank, addr)
-            cdlReadout.text = "CDL %.1f%%".format(pct)
+            val ext = if (com.diogo.snesdeco.emu.ExtractionSession.enabled)
+                " | EXT: ${com.diogo.snesdeco.emu.ExtractionSession.spriteCount()}spr ${com.diogo.snesdeco.emu.ExtractionSession.paletteCount()}pal"
+            else ""
+            cdlReadout.text = "CDL %.1f%%%s".format(pct, ext)
         }
     }
 
@@ -307,6 +346,20 @@ class EmulatorActivity : AppCompatActivity() {
 
         findViewById<android.widget.Button>(R.id.btnRip).setOnClickListener {
             ripSprites()
+        }
+
+        findViewById<android.widget.Button>(R.id.btnExport).setOnClickListener {
+            Toast.makeText(this, "Exportando projeto…", Toast.LENGTH_SHORT).show()
+            thread {
+                val path = try { ExtractionExporter.export(this) } catch (e: Exception) { null }
+                runOnUiThread {
+                    if (path != null) {
+                        Toast.makeText(this, "Projeto exportado em:\n$path", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(this, "Erro ao exportar (ROM carregada?)", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
         }
     }
 

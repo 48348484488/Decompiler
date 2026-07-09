@@ -141,8 +141,11 @@ static void s9xdeco_init_core()
 	Settings.FrameTimeNTSC = 16667;
 	Settings.SixteenBitSound = TRUE;
 	Settings.Stereo = TRUE;
-	Settings.SoundPlaybackRate = 32040;
-	Settings.SoundInputRate = 32040;
+	// 48000 is the native rate of virtually all Android devices; odd rates
+	// like 32040 are accepted but SILENTLY produce no sound on some hardware.
+	// The snes9x resampler converts from the DSP's ~31950 Hz input rate.
+	Settings.SoundPlaybackRate = 48000;
+	Settings.SoundInputRate = 31950;
 	Settings.Transparency = TRUE;
 	Settings.AutoDisplayMessages = FALSE;
 	Settings.BlockInvalidVRAMAccessMaster = TRUE;

@@ -39,6 +39,20 @@ class MainActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.versionText).text =
             "v${com.diogo.snesdeco.BuildConfig.VERSION_NAME} (code ${com.diogo.snesdeco.BuildConfig.VERSION_CODE})"
 
+        val extractionSwitch = findViewById<android.widget.Switch>(R.id.extractionSwitch)
+        extractionSwitch.isChecked = com.diogo.snesdeco.emu.ExtractionSession.enabled
+        extractionSwitch.setOnCheckedChangeListener { _, checked ->
+            com.diogo.snesdeco.emu.ExtractionSession.enabled = checked
+            if (checked) {
+                com.diogo.snesdeco.emu.ExtractionSession.reset()
+                Toast.makeText(
+                    this,
+                    "Modo Extração ligado: ao jogar, o app captura automaticamente todo código executado, sprites e paletas. Use o botão 💾 Projeto na tela do jogo para exportar tudo organizado.",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+
         refreshStatus()
     }
 

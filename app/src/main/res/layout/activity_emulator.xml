@@ -228,6 +228,19 @@
             android:textColor="#7CFF9E"
             android:textSize="12sp"
             android:textAllCaps="false" />
+
+        <Button
+            android:id="@+id/btnExport"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/btn_pill"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:text="💾 Projeto"
+            android:textColor="#FFD166"
+            android:textSize="12sp"
+            android:textAllCaps="false" />
     </LinearLayout>
 
 </FrameLayout>
