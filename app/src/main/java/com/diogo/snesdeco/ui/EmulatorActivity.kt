@@ -97,7 +97,20 @@ class EmulatorActivity : AppCompatActivity() {
 
             track.play()
             audioTrack = track
-            Toast.makeText(this, "Áudio OK: bufBytes=${minBuf * 4}, playState=${track.playState}", Toast.LENGTH_SHORT).show()
+
+            // AudioTrack is confirmed working (ps=3 PLAYING) but no sound was
+            // audible - the likely cause is device volume / silent mode. Check
+            // the media stream volume and tell the user plainly if it's the
+            // problem, rather than leaving them guessing.
+            val am = getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+            val vol = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+            val maxVol = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+            val ringerMode = am.ringerMode
+            if (vol == 0) {
+                Toast.makeText(this, "SOM: o volume de MÍDIA está em 0. Aumente o volume com o jogo aberto (não é o volume de toque).", Toast.LENGTH_LONG).show()
+            } else if (ringerMode != android.media.AudioManager.RINGER_MODE_NORMAL) {
+                Toast.makeText(this, "SOM: celular em modo silencioso/vibração (volume mídia $vol/$maxVol). Em alguns aparelhos isso corta o som do jogo — tire do silencioso.", Toast.LENGTH_LONG).show()
+            }
         } catch (e: Exception) {
             Toast.makeText(this, "Áudio: exceção - ${e.javaClass.simpleName}: ${e.message}", Toast.LENGTH_LONG).show()
             audioTrack = null
@@ -170,8 +183,22 @@ class EmulatorActivity : AppCompatActivity() {
         if (w <= 0 || h <= 0 || pixels.isEmpty()) return
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565)
         bmp.copyPixelsFromBuffer(ShortBuffer.wrap(pixels))
+
+        // fitCenter on the ImageView does NOT upscale this bitmap as expected
+        // (confirmed on-device: view is 2590x420 but the frame stayed ~native
+        // size). So scale explicitly to the view's real measured size,
+        // preserving the SNES aspect ratio, and hand over a ready-to-draw bmp.
+        val vw = videoView.width
+        val vh = videoView.height
+        val out = if (vw > 0 && vh > 0) {
+            val scale = minOf(vw.toFloat() / w, vh.toFloat() / h)
+            val dstW = (w * scale).toInt().coerceAtLeast(1)
+            val dstH = (h * scale).toInt().coerceAtLeast(1)
+            Bitmap.createScaledBitmap(bmp, dstW, dstH, false)
+        } else bmp
+
         runOnUiThread {
-            videoView.setImageBitmap(bmp)
+            videoView.setImageBitmap(out)
         }
     }
 

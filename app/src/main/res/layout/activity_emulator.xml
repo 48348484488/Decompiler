@@ -19,13 +19,13 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:background="#FF00FF">
+        android:background="#000000">
 
         <ImageView
             android:id="@+id/videoView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:scaleType="fitCenter" />
+            android:scaleType="center" />
 
         <TextView
             android:id="@+id/pcReadout"
