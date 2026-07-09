@@ -23,7 +23,6 @@ class EmulatorActivity : AppCompatActivity() {
     private lateinit var pcReadout: TextView
     private lateinit var cdlReadout: TextView
 
-    private var bitmap: Bitmap? = null
     private var audioTrack: AudioTrack? = null
 
     @Volatile private var running = false
@@ -159,11 +158,10 @@ class EmulatorActivity : AppCompatActivity() {
 
     private fun renderFrame(pixels: ShortArray, w: Int, h: Int) {
         if (w <= 0 || h <= 0 || pixels.isEmpty()) return
-        var bmp = bitmap
-        if (bmp == null || bmp.width != w || bmp.height != h) {
-            bmp = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565)
-            bitmap = bmp
-        }
+        // A fresh Bitmap per frame avoids mutating one shared across threads
+        // (the old copyPixelsFromBuffer-on-shared-bitmap approach could race
+        // with the UI thread drawing it mid-update).
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565)
         bmp.copyPixelsFromBuffer(ShortBuffer.wrap(pixels))
         runOnUiThread {
             videoView.setImageBitmap(bmp)

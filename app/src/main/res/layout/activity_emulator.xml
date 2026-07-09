@@ -1,47 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Root is a plain vertical LinearLayout: video area gets whatever space
+     is left (weight=1, height=0dp - the standard, battle-tested Android
+     pattern for "fill remaining space"), controlsArea is a fixed 210dp
+     strip below it. This replaces an earlier ConstraintLayout version
+     where the video ImageView rendered at a small, near-native-pixel
+     size despite 0dp/match-constraint sizing - switching to
+     LinearLayout weights sidesteps whatever was going on there. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:orientation="vertical"
     android:background="#000000"
     android:keepScreenOn="true">
 
-    <ImageView
-        android:id="@+id/videoView"
-        android:layout_width="0dp"
+    <FrameLayout
+        android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:background="#000000"
-        android:scaleType="fitCenter"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/controlsArea" />
+        android:layout_weight="1"
+        android:background="#000000">
 
-    <TextView
-        android:id="@+id/pcReadout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="#AA000000"
-        android:fontFamily="monospace"
-        android:textColor="@color/mono_green"
-        android:textSize="11sp"
-        android:padding="6dp"
-        android:text="PC: --:----"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        <ImageView
+            android:id="@+id/videoView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter" />
 
-    <TextView
-        android:id="@+id/cdlReadout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="#AA000000"
-        android:fontFamily="monospace"
-        android:textColor="@color/text_secondary"
-        android:textSize="10sp"
-        android:padding="6dp"
-        android:text="CDL: 0%"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <TextView
+            android:id="@+id/pcReadout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|start"
+            android:background="#AA000000"
+            android:fontFamily="monospace"
+            android:textColor="@color/mono_green"
+            android:textSize="11sp"
+            android:padding="6dp"
+            android:text="PC: --:----" />
+
+        <TextView
+            android:id="@+id/cdlReadout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:background="#AA000000"
+            android:fontFamily="monospace"
+            android:textColor="@color/text_secondary"
+            android:textSize="10sp"
+            android:padding="6dp"
+            android:text="CDL: 0%" />
+
+    </FrameLayout>
 
     <!-- Control bar, 210dp fixed. Two horizontal bands, verified by hand
          so nothing overlaps:
@@ -54,8 +63,7 @@
         android:id="@+id/controlsArea"
         android:layout_width="match_parent"
         android:layout_height="210dp"
-        android:background="@color/surface"
-        app:layout_constraintBottom_toBottomOf="parent">
+        android:background="@color/surface">
 
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/row1Guide"
@@ -218,4 +226,4 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>
