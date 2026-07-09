@@ -1,19 +1,29 @@
 package com.diogo.snesdeco.ui
 
+import android.Manifest
+import android.content.ContentValues
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.view.MotionEvent
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.diogo.snesdeco.R
 import com.diogo.snesdeco.emu.NativeBridge
 import com.diogo.snesdeco.emu.SpriteRipper
 import com.diogo.snesdeco.rom.RomRepository
+import java.io.File
+import java.io.OutputStream
 import java.nio.ShortBuffer
 import kotlin.concurrent.thread
 
@@ -31,6 +41,51 @@ class EmulatorActivity : AppCompatActivity() {
     private var totalSamplesSeen = 0L
     private var reportedSampleCheck = false
     private var reportedWriteError = false
+    private var pendingSaveAction: (() -> Unit)? = null
+
+    private val storagePermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            pendingSaveAction?.invoke()
+        } else {
+            Toast.makeText(this, "Sem permissão de armazenamento, não dá pra salvar.", Toast.LENGTH_LONG).show()
+        }
+        pendingSaveAction = null
+    }
+
+    /** Runs [action] now if we can write to Downloads already, otherwise asks first. */
+    private fun withStoragePermission(action: () -> Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            action() // MediaStore Downloads needs no runtime permission on API 29+
+            return
+        }
+        val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            action()
+        } else {
+            pendingSaveAction = action
+            storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+    }
+
+    /** Opens an OutputStream for a new file under Download/SNESDeco/[subDir]/[fileName]. */
+    private fun openDownloadsFile(subDir: String, fileName: String, mimeType: String): Pair<OutputStream, String>? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val relPath = "${Environment.DIRECTORY_DOWNLOADS}/SNESDeco/$subDir"
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, relPath)
+            }
+            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return null
+            val stream = contentResolver.openOutputStream(uri) ?: return null
+            stream to "Download/SNESDeco/$subDir/$fileName"
+        } else {
+            val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SNESDeco/$subDir")
+            dir.mkdirs()
+            val f = File(dir, fileName)
+            java.io.FileOutputStream(f) to "Download/SNESDeco/$subDir/$fileName"
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -255,67 +310,70 @@ class EmulatorActivity : AppCompatActivity() {
     }
 
     private fun saveCdl() {
-        try {
-            val cdl = NativeBridge.nativeGetCdlMap()
-            val dir = java.io.File(getExternalFilesDir(null), "snesdeco")
-            dir.mkdirs()
-            val f = java.io.File(dir, "cdl_${System.currentTimeMillis()}.bin")
-            f.writeBytes(cdl)
-            val coded = cdl.count { (it.toInt() and 0x03) != 0 }
-            Toast.makeText(
-                this,
-                "CDL salvo: ${f.absolutePath}\n$coded bytes de código mapeados",
-                Toast.LENGTH_LONG
-            ).show()
-        } catch (e: Exception) {
-            Toast.makeText(this, "Erro ao salvar CDL: ${e.message}", Toast.LENGTH_LONG).show()
+        withStoragePermission {
+            try {
+                val cdl = NativeBridge.nativeGetCdlMap()
+                val fileName = "cdl_${System.currentTimeMillis()}.bin"
+                val (stream, displayPath) = openDownloadsFile("cdl", fileName, "application/octet-stream")
+                    ?: throw java.io.IOException("não foi possível criar o arquivo")
+                stream.use { it.write(cdl) }
+                val coded = cdl.count { (it.toInt() and 0x03) != 0 }
+                Toast.makeText(
+                    this,
+                    "CDL salvo em $displayPath\n$coded bytes de código mapeados",
+                    Toast.LENGTH_LONG
+                ).show()
+            } catch (e: Exception) {
+                Toast.makeText(this, "Erro ao salvar CDL: ${e.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
     private fun ripSprites() {
-        try {
-            val oam = NativeBridge.nativeGetOam()
-            val vram = NativeBridge.nativeGetVram()
-            val cgram = NativeBridge.nativeGetCgram()
-            val nameBase = NativeBridge.nativeGetObjNameBase()
-            val nameSelect = NativeBridge.nativeGetObjNameSelect()
+        withStoragePermission {
+            try {
+                val oam = NativeBridge.nativeGetOam()
+                val vram = NativeBridge.nativeGetVram()
+                val cgram = NativeBridge.nativeGetCgram()
+                val nameBase = NativeBridge.nativeGetObjNameBase()
+                val nameSelect = NativeBridge.nativeGetObjNameSelect()
 
-            val sprites = SpriteRipper.rip(oam, vram, cgram, nameBase, nameSelect, 0)
+                val sprites = SpriteRipper.rip(oam, vram, cgram, nameBase, nameSelect, 0)
+                val subDir = "sprites_${System.currentTimeMillis()}"
 
-            val dir = java.io.File(getExternalFilesDir(null), "snesdeco/sprites_${System.currentTimeMillis()}")
-            dir.mkdirs()
+                var saved = 0
+                var lastDisplayPath = ""
+                for (s in sprites) {
+                    if (s.widthPx <= 0 || s.heightPx <= 0) continue
+                    val bmp = Bitmap.createBitmap(s.widthPx, s.heightPx, Bitmap.Config.ARGB_8888)
+                    bmp.setPixels(s.argb, 0, s.widthPx, 0, 0, s.widthPx, s.heightPx)
+                    val scale = 4
+                    val big = Bitmap.createScaledBitmap(bmp, s.widthPx * scale, s.heightPx * scale, false)
+                    val fileName = "sprite_%03d_pal%d.png".format(s.index, s.paletteIndex)
+                    val (stream, displayPath) = openDownloadsFile(subDir, fileName, "image/png") ?: continue
+                    stream.use { big.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    lastDisplayPath = displayPath
+                    saved++
+                }
 
-            // Save each visible sprite as a PNG (scaled up 4x for visibility).
-            var saved = 0
-            for (s in sprites) {
-                if (s.widthPx <= 0 || s.heightPx <= 0) continue
-                val bmp = android.graphics.Bitmap.createBitmap(s.widthPx, s.heightPx, android.graphics.Bitmap.Config.ARGB_8888)
-                bmp.setPixels(s.argb, 0, s.widthPx, 0, 0, s.widthPx, s.heightPx)
-                val scale = 4
-                val big = android.graphics.Bitmap.createScaledBitmap(bmp, s.widthPx * scale, s.heightPx * scale, false)
-                val f = java.io.File(dir, "sprite_%03d_pal%d.png".format(s.index, s.paletteIndex))
-                java.io.FileOutputStream(f).use { big.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
-                saved++
+                savePaletteImage(cgram, subDir)
+
+                Toast.makeText(
+                    this,
+                    "$saved sprites + paleta salvos em:\nDownload/SNESDeco/$subDir/",
+                    Toast.LENGTH_LONG
+                ).show()
+            } catch (e: Exception) {
+                Toast.makeText(this, "Erro ao ripar sprites: ${e.message}", Toast.LENGTH_LONG).show()
             }
-
-            // Save the full CGRAM palette as a PNG strip (16x16 swatches).
-            savePaletteImage(cgram, java.io.File(dir, "palette_cgram.png"))
-
-            Toast.makeText(
-                this,
-                "$saved sprites + paleta salvos em:\n${dir.absolutePath}",
-                Toast.LENGTH_LONG
-            ).show()
-        } catch (e: Exception) {
-            Toast.makeText(this, "Erro ao ripar sprites: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
-    private fun savePaletteImage(cgram: ByteArray, dest: java.io.File) {
+    private fun savePaletteImage(cgram: ByteArray, subDir: String) {
         val cols = 16
         val rows = 16
         val cell = 16
-        val bmp = android.graphics.Bitmap.createBitmap(cols * cell, rows * cell, android.graphics.Bitmap.Config.ARGB_8888)
+        val bmp = Bitmap.createBitmap(cols * cell, rows * cell, Bitmap.Config.ARGB_8888)
         for (i in 0 until 256) {
             val lo = cgram[i * 2].toInt() and 0xFF
             val hi = cgram[i * 2 + 1].toInt() and 0xFF
@@ -330,7 +388,8 @@ class EmulatorActivity : AppCompatActivity() {
                 bmp.setPixel(cx + x, cy + y, argb)
             }
         }
-        java.io.FileOutputStream(dest).use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        val (stream, _) = openDownloadsFile(subDir, "palette_cgram.png", "image/png") ?: return
+        stream.use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     private fun bindButton(viewId: Int, button: Int) {
