@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:keepScreenOn="true">
+
+    <TextView
+        android:id="@+id/pcReadout"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@color/surface"
+        android:fontFamily="monospace"
+        android:textColor="@color/mono_green"
+        android:textSize="12sp"
+        android:padding="6dp"
+        android:text="PC: --:----"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <ImageView
+        android:id="@+id/videoView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#000000"
+        android:scaleType="fitCenter"
+        app:layout_constraintTop_toBottomOf="@id/pcReadout"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/controlsArea"
+        app:layout_constraintDimensionRatio="H,4:3" />
+
+    <TextView
+        android:id="@+id/cdlReadout"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:fontFamily="monospace"
+        android:textColor="@color/text_secondary"
+        android:textSize="10sp"
+        android:padding="4dp"
+        android:text="CDL: 0% código mapeado"
+        app:layout_constraintTop_toBottomOf="@id/videoView"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <LinearLayout
+        android:id="@+id/controlsArea"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:orientation="horizontal"
+        android:background="@color/surface"
+        android:padding="12dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHeight_percent="0.32">
+
+        <androidx.gridlayout.widget.GridLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            app:columnCount="3"
+            app:rowCount="3">
+
+            <View android:layout_width="0dp" android:layout_height="0dp" app:layout_columnWeight="1" app:layout_rowWeight="1" />
+            <Button android:id="@+id/btnUp" app:layout_columnWeight="1" app:layout_rowWeight="1" android:layout_width="0dp" android:layout_height="0dp" android:text="▲" android:backgroundTint="@color/accent_dim" />
+            <View android:layout_width="0dp" android:layout_height="0dp" app:layout_columnWeight="1" app:layout_rowWeight="1" />
+
+            <Button android:id="@+id/btnLeft" app:layout_columnWeight="1" app:layout_rowWeight="1" android:layout_width="0dp" android:layout_height="0dp" android:text="◀" android:backgroundTint="@color/accent_dim" />
+            <View android:layout_width="0dp" android:layout_height="0dp" app:layout_columnWeight="1" app:layout_rowWeight="1" />
+            <Button android:id="@+id/btnRight" app:layout_columnWeight="1" app:layout_rowWeight="1" android:layout_width="0dp" android:layout_height="0dp" android:text="▶" android:backgroundTint="@color/accent_dim" />
+
+            <View android:layout_width="0dp" android:layout_height="0dp" app:layout_columnWeight="1" app:layout_rowWeight="1" />
+            <Button android:id="@+id/btnDown" app:layout_columnWeight="1" app:layout_rowWeight="1" android:layout_width="0dp" android:layout_height="0dp" android:text="▼" android:backgroundTint="@color/accent_dim" />
+            <View android:layout_width="0dp" android:layout_height="0dp" app:layout_columnWeight="1" app:layout_rowWeight="1" />
+
+        </androidx.gridlayout.widget.GridLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button android:id="@+id/btnSelect" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SELECT" android:textSize="10sp" android:backgroundTint="@color/surface" android:textColor="@color/text_secondary" />
+                <Button android:id="@+id/btnStart" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="START" android:textSize="10sp" android:backgroundTint="@color/surface" android:textColor="@color/text_secondary" />
+            </LinearLayout>
+
+            <androidx.gridlayout.widget.GridLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:columnCount="3"
+                app:rowCount="3">
+
+                <View android:layout_width="52dp" android:layout_height="52dp" app:layout_column="1" app:layout_row="0" />
+                <Button android:id="@+id/btnX" app:layout_column="1" app:layout_row="0" android:layout_width="52dp" android:layout_height="52dp" android:text="X" android:backgroundTint="@color/snes_purple" />
+
+                <Button android:id="@+id/btnY" app:layout_column="0" app:layout_row="1" android:layout_width="52dp" android:layout_height="52dp" android:text="Y" android:backgroundTint="@color/snes_purple" />
+                <Button android:id="@+id/btnR" app:layout_column="2" app:layout_row="0" android:layout_width="52dp" android:layout_height="52dp" android:text="R" android:textSize="10sp" android:backgroundTint="@color/accent" />
+
+                <Button android:id="@+id/btnB" app:layout_column="1" app:layout_row="2" android:layout_width="52dp" android:layout_height="52dp" android:text="B" android:backgroundTint="@color/snes_purple" />
+                <Button android:id="@+id/btnA" app:layout_column="2" app:layout_row="1" android:layout_width="52dp" android:layout_height="52dp" android:text="A" android:backgroundTint="@color/snes_purple" />
+                <Button android:id="@+id/btnL" app:layout_column="0" app:layout_row="0" android:layout_width="52dp" android:layout_height="52dp" android:text="L" android:textSize="10sp" android:backgroundTint="@color/accent" />
+
+            </androidx.gridlayout.widget.GridLayout>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

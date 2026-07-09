@@ -16,6 +16,15 @@
         app:tabTextColor="@color/text_secondary"
         android:background="@color/surface" />
 
+    <Button
+        android:id="@+id/playButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="▶ Jogar"
+        android:textAllCaps="false"
+        android:backgroundTint="@color/accent"
+        android:textColor="@color/text_primary" />
+
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/viewPager"
         android:layout_width="match_parent"

@@ -26,6 +26,13 @@
             android:exported="false"
             android:label="@string/explorer_title" />
 
+        <activity
+            android:name=".ui.EmulatorActivity"
+            android:exported="false"
+            android:label="Jogar"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:screenOrientation="sensorLandscape" />
+
     </application>
 
 </manifest>

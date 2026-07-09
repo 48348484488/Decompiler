@@ -1,0 +1,38 @@
+package com.diogo.snesdeco.emu
+
+object NativeBridge {
+    init {
+        System.loadLibrary("snesdeco_core")
+    }
+
+    external fun nativeInit(): Boolean
+    external fun nativeLoadRom(romData: ByteArray): Boolean
+    external fun nativeRunFrame()
+    external fun nativeGetVideoFrame(): ShortArray
+    external fun nativeGetFrameWidth(): Int
+    external fun nativeGetFrameHeight(): Int
+    external fun nativeGetAudioSamples(): ShortArray
+    external fun nativeSetButton(button: Int, pressed: Boolean)
+    external fun nativeGetCdlMap(): ByteArray
+    external fun nativeResetCdl()
+    external fun nativeGetCurrentBank(): Int
+    external fun nativeGetCurrentAddr(): Int
+    external fun nativeGetCurrentOffset(): Int
+    external fun nativeIsRomLoaded(): Boolean
+
+    // Mirrors bridge.h's S9xDecoButton enum on the native side.
+    object Button {
+        const val B = 0
+        const val Y = 1
+        const val SELECT = 2
+        const val START = 3
+        const val UP = 4
+        const val DOWN = 5
+        const val LEFT = 6
+        const val RIGHT = 7
+        const val A = 8
+        const val X = 9
+        const val L = 10
+        const val R = 11
+    }
+}

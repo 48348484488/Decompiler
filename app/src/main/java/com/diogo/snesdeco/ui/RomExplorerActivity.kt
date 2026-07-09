@@ -1,6 +1,7 @@
 package com.diogo.snesdeco.ui
 
 import android.os.Bundle
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.viewpager2.widget.ViewPager2
 import com.diogo.snesdeco.R
@@ -22,5 +23,9 @@ class RomExplorerActivity : AppCompatActivity() {
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
             tab.text = ExplorerPagerAdapter.TAB_TITLES[position]
         }.attach()
+
+        findViewById<android.widget.Button>(R.id.playButton).setOnClickListener {
+            startActivity(Intent(this, EmulatorActivity::class.java))
+        }
     }
 }
