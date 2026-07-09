@@ -6,6 +6,10 @@ static std::vector<uint8_t> s9x_cdl_map;
 static uint8_t  s9x_cdl_bank = 0;
 static uint16_t s9x_cdl_addr = 0;
 static uint32_t s9x_cdl_offset = 0;
+static bool     s9x_cdl_recording = true;
+
+void S9xCdlSetRecording(bool on) { s9x_cdl_recording = on; }
+bool S9xCdlIsRecording(void) { return s9x_cdl_recording; }
 
 void S9xCdlInit(size_t romSize)
 {
@@ -19,6 +23,8 @@ void S9xCdlReset(void)
 
 void S9xCdlMarkExec(uint32_t romOffset, int length)
 {
+	if (!s9x_cdl_recording)
+		return;
 	if (s9x_cdl_map.empty())
 		return;
 	if (romOffset >= s9x_cdl_map.size())

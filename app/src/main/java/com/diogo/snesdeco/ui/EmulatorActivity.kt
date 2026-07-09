@@ -147,13 +147,17 @@ class EmulatorActivity : AppCompatActivity() {
                     reportedSampleCheck = true
                     val seen = totalSamplesSeen
                     val trackState = audioTrack?.playState
-                    val trackNull = audioTrack == null
+                    // Peak amplitude across the samples we just got tells us if
+                    // the DSP is producing real audio or just silence (zeros).
+                    var peak = 0
+                    for (s in samples) {
+                        val a = kotlin.math.abs(s.toInt())
+                        if (a > peak) peak = a
+                    }
                     runOnUiThread {
-                        val vw = videoView.width
-                        val vh = videoView.height
                         Toast.makeText(
                             this,
-                            "DIAG: ImageView=${vw}x${vh}px, bitmap=${w}x${h}, samples=$seen, trackNull=$trackNull, playState=$trackState",
+                            "AUDIO: pico=$peak (0=mudo, >0=tem som) | total=$seen | ps=$trackState",
                             Toast.LENGTH_LONG
                         ).show()
                     }
@@ -230,6 +234,102 @@ class EmulatorActivity : AppCompatActivity() {
         bindButton(R.id.btnR, NativeBridge.Button.R)
         bindButton(R.id.btnStart, NativeBridge.Button.START)
         bindButton(R.id.btnSelect, NativeBridge.Button.SELECT)
+
+        val recBtn = findViewById<android.widget.Button>(R.id.btnRec)
+        recBtn.setOnClickListener {
+            val nowRecording = !NativeBridge.nativeIsCdlRecording()
+            NativeBridge.nativeSetCdlRecording(nowRecording)
+            recBtn.text = if (nowRecording) "● REC" else "▶ parar/salvar"
+            if (!nowRecording) {
+                // Stopped: persist the accumulated CDL map to a file.
+                saveCdl()
+            } else {
+                Toast.makeText(this, "Gravando código executado (CDL)…", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        findViewById<android.widget.Button>(R.id.btnRip).setOnClickListener {
+            ripSprites()
+        }
+    }
+
+    private fun saveCdl() {
+        try {
+            val cdl = NativeBridge.nativeGetCdlMap()
+            val dir = java.io.File(getExternalFilesDir(null), "snesdeco")
+            dir.mkdirs()
+            val f = java.io.File(dir, "cdl_${System.currentTimeMillis()}.bin")
+            f.writeBytes(cdl)
+            val coded = cdl.count { (it.toInt() and 0x03) != 0 }
+            Toast.makeText(
+                this,
+                "CDL salvo: ${f.absolutePath}\n$coded bytes de código mapeados",
+                Toast.LENGTH_LONG
+            ).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Erro ao salvar CDL: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun ripSprites() {
+        try {
+            val oam = NativeBridge.nativeGetOam()
+            val vram = NativeBridge.nativeGetVram()
+            val cgram = NativeBridge.nativeGetCgram()
+            val nameBase = NativeBridge.nativeGetObjNameBase()
+            val nameSelect = NativeBridge.nativeGetObjNameSelect()
+
+            val sprites = SpriteRipper.rip(oam, vram, cgram, nameBase, nameSelect, 0)
+
+            val dir = java.io.File(getExternalFilesDir(null), "snesdeco/sprites_${System.currentTimeMillis()}")
+            dir.mkdirs()
+
+            // Save each visible sprite as a PNG (scaled up 4x for visibility).
+            var saved = 0
+            for (s in sprites) {
+                if (s.widthPx <= 0 || s.heightPx <= 0) continue
+                val bmp = android.graphics.Bitmap.createBitmap(s.widthPx, s.heightPx, android.graphics.Bitmap.Config.ARGB_8888)
+                bmp.setPixels(s.argb, 0, s.widthPx, 0, 0, s.widthPx, s.heightPx)
+                val scale = 4
+                val big = android.graphics.Bitmap.createScaledBitmap(bmp, s.widthPx * scale, s.heightPx * scale, false)
+                val f = java.io.File(dir, "sprite_%03d_pal%d.png".format(s.index, s.paletteIndex))
+                java.io.FileOutputStream(f).use { big.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                saved++
+            }
+
+            // Save the full CGRAM palette as a PNG strip (16x16 swatches).
+            savePaletteImage(cgram, java.io.File(dir, "palette_cgram.png"))
+
+            Toast.makeText(
+                this,
+                "$saved sprites + paleta salvos em:\n${dir.absolutePath}",
+                Toast.LENGTH_LONG
+            ).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Erro ao ripar sprites: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun savePaletteImage(cgram: ByteArray, dest: java.io.File) {
+        val cols = 16
+        val rows = 16
+        val cell = 16
+        val bmp = android.graphics.Bitmap.createBitmap(cols * cell, rows * cell, android.graphics.Bitmap.Config.ARGB_8888)
+        for (i in 0 until 256) {
+            val lo = cgram[i * 2].toInt() and 0xFF
+            val hi = cgram[i * 2 + 1].toInt() and 0xFF
+            val word = lo or (hi shl 8)
+            val r = ((word and 0x1F) * 255) / 31
+            val g = (((word shr 5) and 0x1F) * 255) / 31
+            val b = (((word shr 10) and 0x1F) * 255) / 31
+            val argb = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+            val cx = (i % cols) * cell
+            val cy = (i / cols) * cell
+            for (y in 0 until cell) for (x in 0 until cell) {
+                bmp.setPixel(cx + x, cy + y, argb)
+            }
+        }
+        java.io.FileOutputStream(dest).use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     private fun bindButton(viewId: Int, button: Int) {

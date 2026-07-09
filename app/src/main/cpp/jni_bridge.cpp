@@ -217,6 +217,7 @@ Java_com_diogo_snesdeco_emu_NativeBridge_nativeLoadRom(JNIEnv *env, jobject, jby
 	if (ok)
 	{
 		S9xCdlInit(Memory.CalculatedSize);
+		S9xCdlSetRecording(true); // capture from the first frame the game runs
 		S9xReset();
 	}
 	s9x_rom_loaded = ok;
@@ -314,6 +315,92 @@ JNIEXPORT jboolean JNICALL
 Java_com_diogo_snesdeco_emu_NativeBridge_nativeIsRomLoaded(JNIEnv *, jobject)
 {
 	return s9x_rom_loaded ? JNI_TRUE : JNI_FALSE;
+}
+
+// ---------------------------------------------------------------------
+// CDL recording control + sprite-ripping snapshots (SNES Deco features)
+// ---------------------------------------------------------------------
+
+// Toggle whether the CPU dispatch hook records into the CDL map.
+JNIEXPORT void JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeSetCdlRecording(JNIEnv *, jobject, jboolean on)
+{
+	S9xCdlSetRecording(on == JNI_TRUE);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeIsCdlRecording(JNIEnv *, jobject)
+{
+	return S9xCdlIsRecording() ? JNI_TRUE : JNI_FALSE;
+}
+
+// Snapshot the 256-entry CGRAM palette (BGR555, 2 bytes each = 512 bytes).
+JNIEXPORT jbyteArray JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeGetCgram(JNIEnv *env, jobject)
+{
+	jbyteArray arr = env->NewByteArray(512);
+	if (arr == nullptr) return nullptr;
+	// PPU.CGDATA is uint16[256]; expose as little-endian bytes.
+	uint8_t buf[512];
+	for (int i = 0; i < 256; i++)
+	{
+		buf[i * 2]     = (uint8_t) (PPU.CGDATA[i] & 0xFF);
+		buf[i * 2 + 1] = (uint8_t) ((PPU.CGDATA[i] >> 8) & 0xFF);
+	}
+	env->SetByteArrayRegion(arr, 0, 512, reinterpret_cast<jbyte *>(buf));
+	return arr;
+}
+
+// Snapshot VRAM (64 KB) - where sprite/BG tile graphics live.
+JNIEXPORT jbyteArray JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeGetVram(JNIEnv *env, jobject)
+{
+	jbyteArray arr = env->NewByteArray(0x10000);
+	if (arr == nullptr) return nullptr;
+	env->SetByteArrayRegion(arr, 0, 0x10000, reinterpret_cast<const jbyte *>(Memory.VRAM));
+	return arr;
+}
+
+// Snapshot the OAM sprite table as a flat int array. For each of the 128
+// sprites we emit 8 ints: HPos, VPos, Name(tile), Palette, Priority, HFlip,
+// VFlip, Size. The Kotlin side reassembles the actual sprite pixels from
+// this + VRAM + CGRAM (the "puzzle assembly" the PPU normally does).
+JNIEXPORT jintArray JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeGetOam(JNIEnv *env, jobject)
+{
+	const int FIELDS = 8;
+	jint tmp[128 * FIELDS];
+	for (int i = 0; i < 128; i++)
+	{
+		const SOBJ &o = PPU.OBJ[i];
+		int base = i * FIELDS;
+		tmp[base + 0] = (jint) o.HPos;
+		tmp[base + 1] = (jint) o.VPos;
+		tmp[base + 2] = (jint) o.Name;
+		tmp[base + 3] = (jint) o.Palette;
+		tmp[base + 4] = (jint) o.Priority;
+		tmp[base + 5] = (jint) o.HFlip;
+		tmp[base + 6] = (jint) o.VFlip;
+		tmp[base + 7] = (jint) o.Size;
+	}
+	jintArray arr = env->NewIntArray(128 * FIELDS);
+	if (arr == nullptr) return nullptr;
+	env->SetIntArrayRegion(arr, 0, 128 * FIELDS, tmp);
+	return arr;
+}
+
+// The base VRAM word-address where OBJ (sprite) tiles begin, and the
+// name-select offset - needed to locate a sprite's tile in VRAM.
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeGetObjNameBase(JNIEnv *, jobject)
+{
+	return (jint) PPU.OBJNameBase;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeGetObjNameSelect(JNIEnv *, jobject)
+{
+	return (jint) PPU.OBJNameSelect;
 }
 
 } // extern "C"

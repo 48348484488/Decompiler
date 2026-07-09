@@ -17,6 +17,11 @@ void S9xCdlInit(size_t romSize);
 void S9xCdlReset(void);
 void S9xCdlMarkExec(uint32_t romOffset, int length);
 
+// Recording gate: when off, S9xCdlMarkExec is a no-op. Lets the app capture
+// only the window the user cares about (press REC, play, press stop).
+void S9xCdlSetRecording(bool on);
+bool S9xCdlIsRecording(void);
+
 // Live "currently executing" program counter, for the real-time view.
 void S9xCdlSetCurrentPC(uint8_t bank, uint16_t addr, uint32_t romOffset);
 uint8_t S9xCdlGetCurrentBank(void);

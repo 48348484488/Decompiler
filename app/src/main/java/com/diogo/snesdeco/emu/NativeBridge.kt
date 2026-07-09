@@ -20,6 +20,15 @@ object NativeBridge {
     external fun nativeGetCurrentOffset(): Int
     external fun nativeIsRomLoaded(): Boolean
 
+    // CDL recording control + sprite-ripping snapshots
+    external fun nativeSetCdlRecording(on: Boolean)
+    external fun nativeIsCdlRecording(): Boolean
+    external fun nativeGetCgram(): ByteArray
+    external fun nativeGetVram(): ByteArray
+    external fun nativeGetOam(): IntArray
+    external fun nativeGetObjNameBase(): Int
+    external fun nativeGetObjNameSelect(): Int
+
     // Mirrors bridge.h's S9xDecoButton enum on the native side.
     object Button {
         const val B = 0

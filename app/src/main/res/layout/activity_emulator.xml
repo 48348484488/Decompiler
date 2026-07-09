@@ -196,4 +196,38 @@
             android:textSize="16sp" />
     </FrameLayout>
 
+    <!-- Feature buttons: REC toggles CDL capture, RIP grabs sprites+palette. -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="10dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnRec"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:background="@drawable/btn_pill"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:text="● REC"
+            android:textColor="#FF6B6B"
+            android:textSize="12sp"
+            android:textAllCaps="false" />
+
+        <Button
+            android:id="@+id/btnRip"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/btn_pill"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:text="⛏ RIP sprites"
+            android:textColor="#7CFF9E"
+            android:textSize="12sp"
+            android:textAllCaps="false" />
+    </LinearLayout>
+
 </FrameLayout>
