@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg_dark">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="10dp"
+        android:gravity="center_vertical">
+
+        <EditText
+            android:id="@+id/tileOffsetInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="2"
+            android:hint="offset hex"
+            android:textColorHint="@color/text_secondary"
+            android:textColor="@color/text_primary"
+            android:fontFamily="monospace"
+            android:inputType="textCapCharacters"
+            android:maxLines="1" />
+
+        <EditText
+            android:id="@+id/tileCountInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="qtd"
+            android:text="256"
+            android:textColorHint="@color/text_secondary"
+            android:textColor="@color/text_primary"
+            android:fontFamily="monospace"
+            android:inputType="number"
+            android:maxLines="1"
+            android:layout_marginStart="6dp" />
+    </LinearLayout>
+
+    <RadioGroup
+        android:id="@+id/bppGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="6dp">
+
+        <RadioButton
+            android:id="@+id/bpp2Radio"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="2bpp"
+            android:textColor="@color/text_primary" />
+
+        <RadioButton
+            android:id="@+id/bpp4Radio"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="4bpp"
+            android:checked="true"
+            android:textColor="@color/text_primary" />
+
+        <RadioButton
+            android:id="@+id/bpp8Radio"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="8bpp"
+            android:textColor="@color/text_primary" />
+
+        <Button
+            android:id="@+id/tileDecodeButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ir"
+            android:textAllCaps="false"
+            android:backgroundTint="@color/accent" />
+    </RadioGroup>
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@color/surface">
+
+        <ScrollView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent">
+
+            <ImageView
+                android:id="@+id/tileImageView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:scaleType="fitStart"
+                android:layout_margin="12dp" />
+
+        </ScrollView>
+    </HorizontalScrollView>
+
+</LinearLayout>

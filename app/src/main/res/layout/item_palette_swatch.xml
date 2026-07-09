@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="4dp"
+    android:gravity="center">
+
+    <View
+        android:id="@+id/swatchView"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="@color/surface" />
+
+    <TextView
+        android:id="@+id/swatchLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textSize="9sp"
+        android:fontFamily="monospace"
+        android:textColor="@color/text_secondary"
+        android:text="00" />
+
+</LinearLayout>

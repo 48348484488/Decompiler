@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">SNES Deco</string>
+    <string name="explorer_title">ROM Explorer</string>
+    <string name="pick_rom">Escolher ROM (.sfc / .smc)</string>
+    <string name="tab_info">Info</string>
+    <string name="tab_disasm">Disasm</string>
+    <string name="tab_hex">Hex</string>
+    <string name="tab_palette">Paleta</string>
+    <string name="tab_tiles">Tiles</string>
+    <string name="no_rom_loaded">Nenhuma ROM carregada</string>
+</resources>
