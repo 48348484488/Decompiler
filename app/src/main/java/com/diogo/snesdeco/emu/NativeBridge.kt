@@ -28,6 +28,7 @@ object NativeBridge {
     external fun nativeGetOam(): IntArray
     external fun nativeGetObjNameBase(): Int
     external fun nativeGetObjNameSelect(): Int
+    external fun nativeGetObjSizeSelect(): Int
 
     // Mirrors bridge.h's S9xDecoButton enum on the native side.
     object Button {

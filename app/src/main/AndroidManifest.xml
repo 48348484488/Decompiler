@@ -35,6 +35,11 @@
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="sensorLandscape" />
 
+        <activity
+            android:name=".ui.SpriteViewerActivity"
+            android:exported="false"
+            android:label="Sprites" />
+
     </application>
 
 </manifest>

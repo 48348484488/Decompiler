@@ -20,6 +20,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.diogo.snesdeco.R
 import com.diogo.snesdeco.emu.NativeBridge
+import com.diogo.snesdeco.emu.SpriteCapture
 import com.diogo.snesdeco.emu.SpriteRipper
 import com.diogo.snesdeco.rom.RomRepository
 import java.io.File
@@ -330,66 +331,29 @@ class EmulatorActivity : AppCompatActivity() {
     }
 
     private fun ripSprites() {
-        withStoragePermission {
-            try {
-                val oam = NativeBridge.nativeGetOam()
-                val vram = NativeBridge.nativeGetVram()
-                val cgram = NativeBridge.nativeGetCgram()
-                val nameBase = NativeBridge.nativeGetObjNameBase()
-                val nameSelect = NativeBridge.nativeGetObjNameSelect()
+        try {
+            val oam = NativeBridge.nativeGetOam()
+            val vram = NativeBridge.nativeGetVram()
+            val cgram = NativeBridge.nativeGetCgram()
+            val nameBase = NativeBridge.nativeGetObjNameBase()
+            val nameSelect = NativeBridge.nativeGetObjNameSelect()
+            val sizeSelect = NativeBridge.nativeGetObjSizeSelect()
 
-                val sprites = SpriteRipper.rip(oam, vram, cgram, nameBase, nameSelect, 0)
-                val subDir = "sprites_${System.currentTimeMillis()}"
-
-                var saved = 0
-                var lastDisplayPath = ""
-                for (s in sprites) {
-                    if (s.widthPx <= 0 || s.heightPx <= 0) continue
-                    val bmp = Bitmap.createBitmap(s.widthPx, s.heightPx, Bitmap.Config.ARGB_8888)
-                    bmp.setPixels(s.argb, 0, s.widthPx, 0, 0, s.widthPx, s.heightPx)
-                    val scale = 4
-                    val big = Bitmap.createScaledBitmap(bmp, s.widthPx * scale, s.heightPx * scale, false)
-                    val fileName = "sprite_%03d_pal%d.png".format(s.index, s.paletteIndex)
-                    val (stream, displayPath) = openDownloadsFile(subDir, fileName, "image/png") ?: continue
-                    stream.use { big.compress(Bitmap.CompressFormat.PNG, 100, it) }
-                    lastDisplayPath = displayPath
-                    saved++
+            thread {
+                val groups = SpriteRipper.ripGroups(oam, vram, cgram, nameBase, nameSelect, sizeSelect)
+                runOnUiThread {
+                    if (groups.isEmpty()) {
+                        Toast.makeText(this, "Nenhum sprite visível na cena agora.", Toast.LENGTH_SHORT).show()
+                    } else {
+                        SpriteCapture.groups = groups
+                        SpriteCapture.cgram = cgram
+                        startActivity(android.content.Intent(this, SpriteViewerActivity::class.java))
+                    }
                 }
-
-                savePaletteImage(cgram, subDir)
-
-                Toast.makeText(
-                    this,
-                    "$saved sprites + paleta salvos em:\nDownload/SNESDeco/$subDir/",
-                    Toast.LENGTH_LONG
-                ).show()
-            } catch (e: Exception) {
-                Toast.makeText(this, "Erro ao ripar sprites: ${e.message}", Toast.LENGTH_LONG).show()
             }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Erro ao capturar sprites: ${e.message}", Toast.LENGTH_LONG).show()
         }
-    }
-
-    private fun savePaletteImage(cgram: ByteArray, subDir: String) {
-        val cols = 16
-        val rows = 16
-        val cell = 16
-        val bmp = Bitmap.createBitmap(cols * cell, rows * cell, Bitmap.Config.ARGB_8888)
-        for (i in 0 until 256) {
-            val lo = cgram[i * 2].toInt() and 0xFF
-            val hi = cgram[i * 2 + 1].toInt() and 0xFF
-            val word = lo or (hi shl 8)
-            val r = ((word and 0x1F) * 255) / 31
-            val g = (((word shr 5) and 0x1F) * 255) / 31
-            val b = (((word shr 10) and 0x1F) * 255) / 31
-            val argb = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
-            val cx = (i % cols) * cell
-            val cy = (i / cols) * cell
-            for (y in 0 until cell) for (x in 0 until cell) {
-                bmp.setPixel(cx + x, cy + y, argb)
-            }
-        }
-        val (stream, _) = openDownloadsFile(subDir, "palette_cgram.png", "image/png") ?: return
-        stream.use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     private fun bindButton(viewId: Int, button: Int) {

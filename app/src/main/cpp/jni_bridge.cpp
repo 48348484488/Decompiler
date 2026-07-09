@@ -403,4 +403,10 @@ Java_com_diogo_snesdeco_emu_NativeBridge_nativeGetObjNameSelect(JNIEnv *, jobjec
 	return (jint) PPU.OBJNameSelect;
 }
 
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeGetObjSizeSelect(JNIEnv *, jobject)
+{
+	return (jint) PPU.OBJSizeSelect;
+}
+
 } // extern "C"
