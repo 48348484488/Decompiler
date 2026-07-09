@@ -45,6 +45,13 @@ class LabActivity : AppCompatActivity() {
         val totalCode = regions.sumOf { it.length }
         summary.text = "${regions.size} regiões · $totalCode bytes de código · ${ExtractionSession.spriteCount()} sprites capturados"
 
+        // Coverage bar: paint how much of the ROM has executed so far.
+        val coverageBar = findViewById<CoverageBar>(R.id.coverageBar)
+        val coverageLabel = findViewById<TextView>(R.id.coverageLabel)
+        val cdlForBar = try { NativeBridge.nativeGetCdlMap() } catch (t: Throwable) { ByteArray(0) }
+        coverageBar.setCdl(cdlForBar)
+        coverageLabel.text = "Cobertura da ROM: %.2f%% capturado (verde = código que rodou)".format(coverageBar.coverageFraction() * 100)
+
         list.layoutManager = LinearLayoutManager(this)
         adapter = LineAdapter { line, offset ->
             selectedLine = line
@@ -81,6 +88,29 @@ class LabActivity : AppCompatActivity() {
                 com.diogo.snesdeco.emu.SpriteCapture.cgram = ExtractionSession.palettesSnapshot().firstOrNull()
                 startActivity(Intent(this, SpriteViewerActivity::class.java))
             }
+        }
+
+        findViewById<Button>(R.id.replayButton).setOnClickListener {
+            // "Reproduce the captured slice" = go back to the emulator and let
+            // it run the real ROM (identical to original) from reset. The
+            // coverage bar shows where capture currently ends.
+            NativeBridge.nativeResetEmu()
+            Toast.makeText(this, "Emulador reiniciado — reproduzindo o trecho. Volte ao jogo.", Toast.LENGTH_LONG).show()
+            finish()
+        }
+
+        findViewById<Button>(R.id.exportButton).setOnClickListener {
+            Toast.makeText(this, "Exportando pacote…", Toast.LENGTH_SHORT).show()
+            Thread {
+                val path = try { PackageExporter.export(this) } catch (e: Exception) { null }
+                runOnUiThread {
+                    Toast.makeText(
+                        this,
+                        if (path != null) "Pacote exportado em:\n$path" else "Erro ao exportar.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }.start()
         }
     }
 
