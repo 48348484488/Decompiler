@@ -180,6 +180,12 @@ void S9xMainLoop (void)
 					cdlOffset = (int32_t) (cdlBank & 0x7F) * 0x8000 + (cdlAddr - 0x8000);
 			}
 
+			// cdlOffset >= 0 means this instruction is being executed straight
+			// from ROM. Code run from RAM (offset -1) is normal (the boot
+			// copies routines into RAM and runs them) and must NOT be treated
+			// as "uncaptured" - passing S9xCdlMarkExec an offset of -1 (as
+			// UINT32_MAX) previously made sandbox freeze on the black boot
+			// screen. So only hook when the code is genuinely in ROM.
 			if (cdlOffset >= 0)
 			{
 				S9xCdlMarkExec((uint32_t) cdlOffset, ICPU.S9xOpLengths[Op]);

@@ -362,19 +362,21 @@ class EmulatorActivity : AppCompatActivity() {
             }
             val turnOn = !NativeBridge.nativeIsSandbox()
             if (turnOn) {
-                // Sandbox replays within the captured set: stop recording,
-                // clear any boundary, reset so it runs from the start, and
-                // freeze the moment execution leaves what was captured.
+                // Sandbox watches from the CURRENT scene forward (which is
+                // already captured, since you're seeing it). We deliberately
+                // do NOT reset here - resetting would re-run the boot path,
+                // which a short capture may not fully cover. Watching from the
+                // live scene means the game keeps playing normally and only
+                // freezes if you steer it into genuinely uncaptured territory.
                 NativeBridge.nativeSetCdlRecording(false)
                 NativeBridge.nativeClearBoundary()
                 NativeBridge.nativeSetSandbox(true)
-                NativeBridge.nativeResetEmu()
                 sandboxFrozen = false
                 sandboxBtn.text = "🧪 Sandbox: ON"
                 findViewById<android.widget.Button>(R.id.btnCapture).text = "○ Capturar: OFF"
                 Toast.makeText(
                     this,
-                    "Sandbox ligado: rodando só o trecho capturado. Vai congelar quando o jogo tentar executar código que você ainda não capturou.",
+                    "Sandbox ligado a partir desta cena. O jogo continua rodando; vai congelar só se entrar em código que você ainda não capturou (ex: uma tela nova).",
                     Toast.LENGTH_LONG
                 ).show()
             } else {
