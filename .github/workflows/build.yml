@@ -29,7 +29,25 @@ jobs:
           gradle-version: 8.7
 
       - name: Build debug APK
-        run: gradle assembleDebug --stacktrace
+        shell: bash
+        run: |
+          set +e
+          gradle assembleDebug --stacktrace 2>&1 | tee build_output.log
+          RESULT=${PIPESTATUS[0]}
+          if [ "$RESULT" -ne 0 ]; then
+            grep -E "error:|Error:|FAILED|error occurred|undefined reference|fatal error" build_output.log | sort -u | head -60 | while IFS= read -r line; do
+              safe=$(echo "$line" | sed 's/%/%25/g; s/\r/%0D/g; s/\n/%0A/g')
+              echo "::error::${safe}"
+            done
+            exit $RESULT
+          fi
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build_output.log
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
