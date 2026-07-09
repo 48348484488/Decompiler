@@ -170,23 +170,8 @@ class EmulatorActivity : AppCompatActivity() {
         if (w <= 0 || h <= 0 || pixels.isEmpty()) return
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565)
         bmp.copyPixelsFromBuffer(ShortBuffer.wrap(pixels))
-
-        // Scale up to the ImageView's real measured size in code, preserving
-        // the SNES aspect ratio. Doing the scaling here (rather than relying
-        // on the ImageView's scaleType) removes all ambiguity about density
-        // and match-constraint sizing that made the frame render tiny before.
-        val viewW = videoView.width
-        val viewH = videoView.height
-        val display = if (viewW > 0 && viewH > 0) {
-            val scale = minOf(viewW.toFloat() / w, viewH.toFloat() / h)
-            val dstW = (w * scale).toInt().coerceAtLeast(1)
-            val dstH = (h * scale).toInt().coerceAtLeast(1)
-            Bitmap.createScaledBitmap(bmp, dstW, dstH, false)
-        } else {
-            bmp
-        }
         runOnUiThread {
-            videoView.setImageBitmap(display)
+            videoView.setImageBitmap(bmp)
         }
     }
 
@@ -200,7 +185,14 @@ class EmulatorActivity : AppCompatActivity() {
 
         runOnUiThread {
             pcReadout.text = "PC: %02X:%04X".format(bank, addr)
-            cdlReadout.text = "CDL: %.1f%% da ROM já mapeada como código/operando".format(pct)
+            val container = findViewById<android.view.View>(R.id.videoContainer)
+            cdlReadout.text = "CDL %.1f%% | img=%dx%d cont=%dx%d | aud=%s ps=%s".format(
+                pct,
+                videoView.width, videoView.height,
+                container.width, container.height,
+                if (audioTrack == null) "NULL" else "ok",
+                audioTrack?.playState?.toString() ?: "-"
+            )
         }
     }
 
