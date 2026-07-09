@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.diogo.snesdeco.R
 import com.diogo.snesdeco.emu.NativeBridge
+import com.diogo.snesdeco.emu.SpriteRipper
 import com.diogo.snesdeco.rom.RomRepository
 import java.nio.ShortBuffer
 import kotlin.concurrent.thread
