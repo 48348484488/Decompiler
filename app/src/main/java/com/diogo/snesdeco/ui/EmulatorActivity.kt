@@ -151,6 +151,7 @@ class EmulatorActivity : AppCompatActivity() {
                     sandboxFrozen = true
                     val off = NativeBridge.nativeBoundaryOffset()
                     runOnUiThread {
+                        findViewById<android.widget.Button>(R.id.btnSandbox).text = "⏸ Congelado (toque=sair)"
                         Toast.makeText(
                             this,
                             "⏸ Congelado: o jogo chegou no fim do trecho capturado (tentou rodar código novo em offset %06X). Tudo que rodou até aqui É código capturado.".format(off),
@@ -304,8 +305,61 @@ class EmulatorActivity : AppCompatActivity() {
             openLab()
         }
 
+        // Capture toggle: turn CDL recording on/off. Starts ON (capture from
+        // frame 1). Turning it off freezes the captured set so you can then
+        // use Sandbox to replay only what you captured.
+        val captureBtn = findViewById<android.widget.Button>(R.id.btnCapture)
+        captureBtn.text = if (NativeBridge.nativeIsCdlRecording()) "● Capturar: ON" else "○ Capturar: OFF"
+        captureBtn.setOnClickListener {
+            val turnOn = !NativeBridge.nativeIsCdlRecording()
+            NativeBridge.nativeSetCdlRecording(turnOn)
+            captureBtn.text = if (turnOn) "● Capturar: ON" else "○ Capturar: OFF"
+            Toast.makeText(
+                this,
+                if (turnOn) "Capturando: todo código que o jogo executar está sendo gravado."
+                else "Captura pausada. O que já foi capturado está guardado.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+
+        // Restart ROM: reset the console to the very beginning, so you can
+        // capture a run from the intro. Optionally clears the captured map.
+        findViewById<android.widget.Button>(R.id.btnRestart).setOnClickListener {
+            android.app.AlertDialog.Builder(this)
+                .setTitle("Reiniciar ROM")
+                .setMessage("Reiniciar o jogo do começo. Quer também apagar o que já foi capturado, para gravar uma sessão limpa desde o início?")
+                .setPositiveButton("Reiniciar e limpar captura") { _, _ ->
+                    NativeBridge.nativeResetCdl()
+                    NativeBridge.nativeSetCdlRecording(true)
+                    NativeBridge.nativeSetSandbox(false)
+                    sandboxFrozen = false
+                    NativeBridge.nativeResetEmu()
+                    captureBtn.text = "● Capturar: ON"
+                    findViewById<android.widget.Button>(R.id.btnSandbox).text = "🧪 Sandbox: OFF"
+                    Toast.makeText(this, "Jogo reiniciado, captura zerada e ligada. Jogue para capturar desde o início.", Toast.LENGTH_LONG).show()
+                }
+                .setNegativeButton("Só reiniciar o jogo") { _, _ ->
+                    NativeBridge.nativeSetSandbox(false)
+                    sandboxFrozen = false
+                    NativeBridge.nativeResetEmu()
+                    Toast.makeText(this, "Jogo reiniciado (captura mantida).", Toast.LENGTH_SHORT).show()
+                }
+                .setNeutralButton("Cancelar", null)
+                .show()
+        }
+
         val sandboxBtn = findViewById<android.widget.Button>(R.id.btnSandbox)
         sandboxBtn.setOnClickListener {
+            // If currently frozen at the boundary, this tap exits the freeze
+            // and turns sandbox off so the game runs normally again.
+            if (sandboxFrozen) {
+                NativeBridge.nativeSetSandbox(false)
+                NativeBridge.nativeClearBoundary()
+                sandboxFrozen = false
+                sandboxBtn.text = "🧪 Sandbox: OFF"
+                Toast.makeText(this, "Descongelado. ROM roda normal de novo.", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             val turnOn = !NativeBridge.nativeIsSandbox()
             if (turnOn) {
                 // Sandbox replays within the captured set: stop recording,
@@ -317,6 +371,7 @@ class EmulatorActivity : AppCompatActivity() {
                 NativeBridge.nativeResetEmu()
                 sandboxFrozen = false
                 sandboxBtn.text = "🧪 Sandbox: ON"
+                findViewById<android.widget.Button>(R.id.btnCapture).text = "○ Capturar: OFF"
                 Toast.makeText(
                     this,
                     "Sandbox ligado: rodando só o trecho capturado. Vai congelar quando o jogo tentar executar código que você ainda não capturou.",
