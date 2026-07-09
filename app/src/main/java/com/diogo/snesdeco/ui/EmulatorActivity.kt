@@ -64,14 +64,15 @@ class EmulatorActivity : AppCompatActivity() {
 
     private fun setupAudio() {
         val sampleRate = 32040
-        val minBuf = AudioTrack.getMinBufferSize(
+        var minBuf = AudioTrack.getMinBufferSize(
             sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT
         )
+        if (minBuf <= 0) minBuf = sampleRate * 2 * 2 / 10 // ~100ms fallback if the device query fails
         audioTrack = AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_GAME)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                     .build()
             )
             .setAudioFormat(
@@ -81,9 +82,10 @@ class EmulatorActivity : AppCompatActivity() {
                     .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
                     .build()
             )
-            .setBufferSizeInBytes(minBuf * 2)
+            .setBufferSizeInBytes(minBuf * 4)
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
+        android.util.Log.i("SNESDeco", "AudioTrack state=${audioTrack?.state} playState=${audioTrack?.playState} bufBytes=${minBuf * 4}")
         audioTrack?.play()
     }
 
@@ -103,6 +105,9 @@ class EmulatorActivity : AppCompatActivity() {
 
                 if (samples.isNotEmpty()) {
                     audioTrack?.write(samples, 0, samples.size)
+                }
+                if (frameCounter % 60 == 0) {
+                    android.util.Log.i("SNESDeco", "frame=$frameCounter samples=${samples.size} playState=${audioTrack?.playState}")
                 }
 
                 renderFrame(pixels, w, h)

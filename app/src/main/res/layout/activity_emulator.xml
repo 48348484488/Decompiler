@@ -3,22 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_dark"
+    android:background="#000000"
     android:keepScreenOn="true">
-
-    <TextView
-        android:id="@+id/pcReadout"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:background="@color/surface"
-        android:fontFamily="monospace"
-        android:textColor="@color/mono_green"
-        android:textSize="12sp"
-        android:padding="6dp"
-        android:text="PC: --:----"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
 
     <ImageView
         android:id="@+id/videoView"
@@ -26,91 +12,211 @@
         android:layout_height="0dp"
         android:background="#000000"
         android:scaleType="fitCenter"
-        app:layout_constraintTop_toBottomOf="@id/pcReadout"
+        android:adjustViewBounds="true"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/controlsArea"
-        app:layout_constraintDimensionRatio="H,4:3" />
+        app:layout_constraintBottom_toTopOf="@id/controlsArea" />
+
+    <TextView
+        android:id="@+id/pcReadout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="#AA000000"
+        android:fontFamily="monospace"
+        android:textColor="@color/mono_green"
+        android:textSize="11sp"
+        android:padding="6dp"
+        android:text="PC: --:----"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
     <TextView
         android:id="@+id/cdlReadout"
-        android:layout_width="0dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:background="#AA000000"
         android:fontFamily="monospace"
         android:textColor="@color/text_secondary"
         android:textSize="10sp"
-        android:padding="4dp"
-        android:text="CDL: 0% código mapeado"
-        app:layout_constraintTop_toBottomOf="@id/videoView"
-        app:layout_constraintStart_toStartOf="parent"
+        android:padding="6dp"
+        android:text="CDL: 0%"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <LinearLayout
+    <!-- Control bar, 210dp fixed. Two horizontal bands, verified by hand
+         so nothing overlaps:
+           Row 1 (0-40dp):    L ... SELECT START ... R
+           Row 2 (40-210dp):  D-pad (left half) | A/B/X/Y diamond (right half)
+         Row 2's contents are anchored from row1Guideline downward
+         (D-pad) or from the container bottom upward (diamond); both
+         chains fit inside 210dp with margin to spare (checked below). -->
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/controlsArea"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:orientation="horizontal"
+        android:layout_height="210dp"
         android:background="@color/surface"
-        android:padding="12dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHeight_percent="0.32">
+        app:layout_constraintBottom_toBottomOf="parent">
 
-        <androidx.gridlayout.widget.GridLayout
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            app:columnCount="3"
-            app:rowCount="3">
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/row1Guide"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layout_constraintGuide_begin="40dp" />
 
-            <View android:layout_width="0dp" android:layout_height="0dp" app:layout_columnWeight="1" app:layout_rowWeight="1" />
-            <Button android:id="@+id/btnUp" app:layout_columnWeight="1" app:layout_rowWeight="1" android:layout_width="0dp" android:layout_height="0dp" android:text="▲" android:backgroundTint="@color/accent_dim" />
-            <View android:layout_width="0dp" android:layout_height="0dp" app:layout_columnWeight="1" app:layout_rowWeight="1" />
+        <!-- Row 1 -->
+        <Button
+            android:id="@+id/btnL"
+            android:layout_width="56dp"
+            android:layout_height="34dp"
+            android:text="L"
+            android:textSize="12sp"
+            android:backgroundTint="@color/accent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            android:layout_marginTop="4dp"
+            android:layout_marginStart="20dp" />
 
-            <Button android:id="@+id/btnLeft" app:layout_columnWeight="1" app:layout_rowWeight="1" android:layout_width="0dp" android:layout_height="0dp" android:text="◀" android:backgroundTint="@color/accent_dim" />
-            <View android:layout_width="0dp" android:layout_height="0dp" app:layout_columnWeight="1" app:layout_rowWeight="1" />
-            <Button android:id="@+id/btnRight" app:layout_columnWeight="1" app:layout_rowWeight="1" android:layout_width="0dp" android:layout_height="0dp" android:text="▶" android:backgroundTint="@color/accent_dim" />
+        <Button
+            android:id="@+id/btnR"
+            android:layout_width="56dp"
+            android:layout_height="34dp"
+            android:text="R"
+            android:textSize="12sp"
+            android:backgroundTint="@color/accent"
+            app:layout_constraintTop_toTopOf="@id/btnL"
+            app:layout_constraintEnd_toEndOf="parent"
+            android:layout_marginEnd="20dp" />
 
-            <View android:layout_width="0dp" android:layout_height="0dp" app:layout_columnWeight="1" app:layout_rowWeight="1" />
-            <Button android:id="@+id/btnDown" app:layout_columnWeight="1" app:layout_rowWeight="1" android:layout_width="0dp" android:layout_height="0dp" android:text="▼" android:backgroundTint="@color/accent_dim" />
-            <View android:layout_width="0dp" android:layout_height="0dp" app:layout_columnWeight="1" app:layout_rowWeight="1" />
+        <Button
+            android:id="@+id/btnSelect"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:text="SELECT"
+            android:textSize="9sp"
+            android:backgroundTint="@color/bg_dark"
+            android:textColor="@color/text_secondary"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            app:layout_constraintTop_toTopOf="@id/btnL"
+            app:layout_constraintEnd_toStartOf="@id/btnStart"
+            app:layout_constraintStart_toEndOf="@id/btnL" />
 
-        </androidx.gridlayout.widget.GridLayout>
+        <Button
+            android:id="@+id/btnStart"
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:text="START"
+            android:textSize="9sp"
+            android:backgroundTint="@color/bg_dark"
+            android:textColor="@color/text_secondary"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            app:layout_constraintTop_toTopOf="@id/btnL"
+            app:layout_constraintStart_toEndOf="@id/btnSelect"
+            app:layout_constraintEnd_toStartOf="@id/btnR" />
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
+        <!-- Row 2: D-pad. Needs up(44)+gap4+mid(44)+gap4+down(44)=140dp
+             starting 8dp below row1Guide(40) -> bottom at 40+8+140=188,
+             comfortably inside 210dp. -->
+        <Button
+            android:id="@+id/btnUp"
+            android:layout_width="50dp"
+            android:layout_height="44dp"
+            android:text="▲"
+            android:backgroundTint="@color/accent_dim"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/row1Guide"
+            android:layout_marginStart="30dp"
+            android:layout_marginTop="8dp" />
+
+        <Button
+            android:id="@+id/btnLeft"
+            android:layout_width="50dp"
+            android:layout_height="44dp"
+            android:text="◀"
+            android:backgroundTint="@color/accent_dim"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/btnUp"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="4dp" />
+
+        <Button
+            android:id="@+id/btnRight"
+            android:layout_width="50dp"
+            android:layout_height="44dp"
+            android:text="▶"
+            android:backgroundTint="@color/accent_dim"
+            app:layout_constraintStart_toEndOf="@id/btnLeft"
+            app:layout_constraintTop_toTopOf="@id/btnLeft"
+            android:layout_marginStart="50dp" />
+
+        <Button
+            android:id="@+id/btnDown"
+            android:layout_width="50dp"
+            android:layout_height="44dp"
+            android:text="▼"
+            android:backgroundTint="@color/accent_dim"
+            app:layout_constraintStart_toStartOf="@id/btnUp"
+            app:layout_constraintTop_toBottomOf="@id/btnLeft"
+            android:layout_marginTop="4dp" />
+
+        <!-- Row 2: A/B/X/Y diamond, anchored bottom-up so the math is
+             easy to verify: B(44)+gap6+[Y/A row](44)+gap6+X(44)=144dp,
+             plus marginBottom 10 = 154dp, so X's top lands at
+             210-154=56dp - well clear of row1 (ends at 40dp). -->
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/diamondGuide"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:gravity="center">
+            app:layout_constraintGuide_end="90dp" />
 
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
+        <Button
+            android:id="@+id/btnB"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:text="B"
+            android:backgroundTint="@color/snes_purple"
+            app:layout_constraintStart_toEndOf="@id/btnY"
+            app:layout_constraintEnd_toStartOf="@id/btnA"
+            app:layout_constraintBottom_toBottomOf="parent"
+            android:layout_marginBottom="10dp" />
 
-                <Button android:id="@+id/btnSelect" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SELECT" android:textSize="10sp" android:backgroundTint="@color/surface" android:textColor="@color/text_secondary" />
-                <Button android:id="@+id/btnStart" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="START" android:textSize="10sp" android:backgroundTint="@color/surface" android:textColor="@color/text_secondary" />
-            </LinearLayout>
+        <Button
+            android:id="@+id/btnY"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:text="Y"
+            android:backgroundTint="@color/snes_purple"
+            app:layout_constraintEnd_toEndOf="@id/diamondGuide"
+            app:layout_constraintBottom_toTopOf="@id/btnB"
+            android:layout_marginEnd="6dp"
+            android:layout_marginBottom="6dp" />
 
-            <androidx.gridlayout.widget.GridLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                app:columnCount="3"
-                app:rowCount="3">
+        <Button
+            android:id="@+id/btnA"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:text="A"
+            android:backgroundTint="@color/snes_purple"
+            app:layout_constraintStart_toStartOf="@id/diamondGuide"
+            app:layout_constraintBottom_toTopOf="@id/btnB"
+            android:layout_marginStart="6dp"
+            android:layout_marginBottom="6dp" />
 
-                <View android:layout_width="52dp" android:layout_height="52dp" app:layout_column="1" app:layout_row="0" />
-                <Button android:id="@+id/btnX" app:layout_column="1" app:layout_row="0" android:layout_width="52dp" android:layout_height="52dp" android:text="X" android:backgroundTint="@color/snes_purple" />
+        <Button
+            android:id="@+id/btnX"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:text="X"
+            android:backgroundTint="@color/snes_purple"
+            app:layout_constraintStart_toEndOf="@id/btnY"
+            app:layout_constraintEnd_toStartOf="@id/btnA"
+            app:layout_constraintBottom_toTopOf="@id/btnY"
+            android:layout_marginBottom="6dp" />
 
-                <Button android:id="@+id/btnY" app:layout_column="0" app:layout_row="1" android:layout_width="52dp" android:layout_height="52dp" android:text="Y" android:backgroundTint="@color/snes_purple" />
-                <Button android:id="@+id/btnR" app:layout_column="2" app:layout_row="0" android:layout_width="52dp" android:layout_height="52dp" android:text="R" android:textSize="10sp" android:backgroundTint="@color/accent" />
-
-                <Button android:id="@+id/btnB" app:layout_column="1" app:layout_row="2" android:layout_width="52dp" android:layout_height="52dp" android:text="B" android:backgroundTint="@color/snes_purple" />
-                <Button android:id="@+id/btnA" app:layout_column="2" app:layout_row="1" android:layout_width="52dp" android:layout_height="52dp" android:text="A" android:backgroundTint="@color/snes_purple" />
-                <Button android:id="@+id/btnL" app:layout_column="0" app:layout_row="0" android:layout_width="52dp" android:layout_height="52dp" android:text="L" android:textSize="10sp" android:backgroundTint="@color/accent" />
-
-            </androidx.gridlayout.widget.GridLayout>
-        </LinearLayout>
-
-    </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
