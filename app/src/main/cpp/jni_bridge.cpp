@@ -18,6 +18,8 @@
 #include "gfx.h"
 #include "controls.h"
 #include "conffile.h"
+#include "fscompat.h"
+#include "display.h"
 #include "movie.h"
 #include "snapshot.h"
 #include "cdl.h"
@@ -117,6 +119,10 @@ void S9xParseArg(char **, int &, int) {}
 bool8 S9xOpenSnapshotFile(const char *, bool8, STREAM *) { return FALSE; }
 void S9xCloseSnapshotFile(STREAM) {}
 void S9xAutoSaveSRAM(void) {}
+
+std::string S9xGetDirectory(enum s9x_getdirtype) { return "/data/local/tmp"; }
+std::string S9xGetFilenameInc(std::string, enum s9x_getdirtype) { return "/data/local/tmp/snesdeco.tmp"; }
+const char *S9xStringInput(const char *) { return nullptr; }
 
 // ---------------------------------------------------------------------
 // Internal setup helpers
