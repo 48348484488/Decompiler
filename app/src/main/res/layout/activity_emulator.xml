@@ -205,39 +205,13 @@
         android:orientation="horizontal">
 
         <Button
-            android:id="@+id/btnRec"
+            android:id="@+id/btnLab"
             android:layout_width="wrap_content"
             android:layout_height="40dp"
             android:background="@drawable/btn_pill"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:text="● REC"
-            android:textColor="#FF6B6B"
-            android:textSize="12sp"
-            android:textAllCaps="false" />
-
-        <Button
-            android:id="@+id/btnRip"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_marginStart="8dp"
-            android:background="@drawable/btn_pill"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:text="⛏ RIP sprites"
-            android:textColor="#7CFF9E"
-            android:textSize="12sp"
-            android:textAllCaps="false" />
-
-        <Button
-            android:id="@+id/btnExport"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_marginStart="8dp"
-            android:background="@drawable/btn_pill"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:text="💾 Projeto"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:text="🔬 Lab (código + sprites)"
             android:textColor="#FFD166"
             android:textSize="12sp"
             android:textAllCaps="false" />

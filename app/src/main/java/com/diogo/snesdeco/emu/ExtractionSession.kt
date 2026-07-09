@@ -3,11 +3,12 @@ package com.diogo.snesdeco.emu
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
- * Full-capture ("Modo Extração") session state. When enabled BEFORE loading a
- * ROM, the emulator auto-captures during play: the CDL records every executed
- * instruction (already on from frame 1), and every few seconds the current
- * assembled sprites + CGRAM palette are snapshotted and deduplicated here.
- * ExtractionExporter then writes everything as one organized project folder.
+ * Internal workspace ("Lab") store. When capture is enabled BEFORE loading a
+ * ROM, the emulator auto-collects during play: the CDL records every executed
+ * instruction, and every few seconds the current assembled sprites + CGRAM
+ * palette are snapshotted and deduplicated here. Nothing is exported to files;
+ * this all lives inside the app so the user can browse, edit ASM, and test
+ * patches live. LabState below holds the last captured CDL for the Lab screen.
  */
 object ExtractionSession {
     @Volatile var enabled = false
@@ -52,4 +53,12 @@ object ExtractionSession {
             if (!paletteMap.containsKey(h)) paletteMap[h] = cgram.copyOf()
         }
     }
+}
+
+/** A discovered contiguous run of executed code in the ROM. */
+data class CodeRegion(val offset: Int, val length: Int, val bank: Int, val addr: Int)
+
+/** Holds the CDL-derived code regions for the Lab, computed on demand. */
+object LabState {
+    @Volatile var regions: List<CodeRegion> = emptyList()
 }

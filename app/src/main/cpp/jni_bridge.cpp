@@ -412,4 +412,47 @@ Java_com_diogo_snesdeco_emu_NativeBridge_nativeGetObjSizeSelect(JNIEnv *, jobjec
 	return (jint) PPU.OBJSizeSelect;
 }
 
+// Read [length] bytes from the loaded ROM starting at file offset. Used by the
+// Lab to show the current bytes at a code region before/after patching.
+JNIEXPORT jbyteArray JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeReadRom(JNIEnv *env, jobject, jint offset, jint length)
+{
+	if (offset < 0 || length <= 0) return env->NewByteArray(0);
+	uint32_t off = (uint32_t) offset;
+	uint32_t len = (uint32_t) length;
+	if (off >= Memory.CalculatedSize) return env->NewByteArray(0);
+	if (off + len > Memory.CalculatedSize) len = Memory.CalculatedSize - off;
+	jbyteArray arr = env->NewByteArray((jsize) len);
+	if (arr == nullptr) return nullptr;
+	env->SetByteArrayRegion(arr, 0, (jsize) len, reinterpret_cast<const jbyte *>(Memory.ROM + off));
+	return arr;
+}
+
+// Patch bytes into the in-memory ROM at [offset]. Returns how many were
+// written. The Lab calls nativeResetEmu() afterward so the change takes
+// effect from the game's next run - this is exactly a ROM hack applied live.
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativePatchRom(JNIEnv *env, jobject, jint offset, jbyteArray data)
+{
+	if (offset < 0) return 0;
+	uint32_t off = (uint32_t) offset;
+	if (off >= Memory.CalculatedSize) return 0;
+	jsize len = env->GetArrayLength(data);
+	if ((uint32_t) len + off > Memory.CalculatedSize)
+		len = (jsize) (Memory.CalculatedSize - off);
+	if (len <= 0) return 0;
+	std::vector<uint8_t> buf((size_t) len);
+	env->GetByteArrayRegion(data, 0, len, reinterpret_cast<jbyte *>(buf.data()));
+	memcpy(Memory.ROM + off, buf.data(), (size_t) len);
+	return (jint) len;
+}
+
+// Soft-reset the console so patched code runs from the start.
+JNIEXPORT void JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeResetEmu(JNIEnv *, jobject)
+{
+	if (s9x_rom_loaded)
+		S9xReset();
+}
+
 } // extern "C"

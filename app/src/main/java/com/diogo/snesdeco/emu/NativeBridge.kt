@@ -29,6 +29,9 @@ object NativeBridge {
     external fun nativeGetObjNameBase(): Int
     external fun nativeGetObjNameSelect(): Int
     external fun nativeGetObjSizeSelect(): Int
+    external fun nativeReadRom(offset: Int, length: Int): ByteArray
+    external fun nativePatchRom(offset: Int, data: ByteArray): Int
+    external fun nativeResetEmu()
 
     // Mirrors bridge.h's S9xDecoButton enum on the native side.
     object Button {

@@ -1,30 +1,19 @@
 package com.diogo.snesdeco.ui
 
-import android.Manifest
-import android.content.ContentValues
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
-import android.os.Build
 import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
 import android.view.MotionEvent
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import com.diogo.snesdeco.R
 import com.diogo.snesdeco.emu.NativeBridge
-import com.diogo.snesdeco.emu.SpriteCapture
 import com.diogo.snesdeco.emu.SpriteRipper
 import com.diogo.snesdeco.rom.RomRepository
-import java.io.File
-import java.io.OutputStream
 import java.nio.ShortBuffer
 import kotlin.concurrent.thread
 
@@ -42,51 +31,6 @@ class EmulatorActivity : AppCompatActivity() {
     private var totalSamplesSeen = 0L
     private var reportedSampleCheck = false
     private var reportedWriteError = false
-    private var pendingSaveAction: (() -> Unit)? = null
-
-    private val storagePermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) {
-            pendingSaveAction?.invoke()
-        } else {
-            Toast.makeText(this, "Sem permissão de armazenamento, não dá pra salvar.", Toast.LENGTH_LONG).show()
-        }
-        pendingSaveAction = null
-    }
-
-    /** Runs [action] now if we can write to Downloads already, otherwise asks first. */
-    private fun withStoragePermission(action: () -> Unit) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            action() // MediaStore Downloads needs no runtime permission on API 29+
-            return
-        }
-        val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-        if (granted) {
-            action()
-        } else {
-            pendingSaveAction = action
-            storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-        }
-    }
-
-    /** Opens an OutputStream for a new file under Download/SNESDeco/[subDir]/[fileName]. */
-    private fun openDownloadsFile(subDir: String, fileName: String, mimeType: String): Pair<OutputStream, String>? {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val relPath = "${Environment.DIRECTORY_DOWNLOADS}/SNESDeco/$subDir"
-            val values = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-                put(MediaStore.MediaColumns.RELATIVE_PATH, relPath)
-            }
-            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return null
-            val stream = contentResolver.openOutputStream(uri) ?: return null
-            stream to "Download/SNESDeco/$subDir/$fileName"
-        } else {
-            val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SNESDeco/$subDir")
-            dir.mkdirs()
-            val f = File(dir, fileName)
-            java.io.FileOutputStream(f) to "Download/SNESDeco/$subDir/$fileName"
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -331,81 +275,39 @@ class EmulatorActivity : AppCompatActivity() {
         bindButton(R.id.btnStart, NativeBridge.Button.START)
         bindButton(R.id.btnSelect, NativeBridge.Button.SELECT)
 
-        val recBtn = findViewById<android.widget.Button>(R.id.btnRec)
-        recBtn.setOnClickListener {
-            val nowRecording = !NativeBridge.nativeIsCdlRecording()
-            NativeBridge.nativeSetCdlRecording(nowRecording)
-            recBtn.text = if (nowRecording) "● REC" else "▶ parar/salvar"
-            if (!nowRecording) {
-                // Stopped: persist the accumulated CDL map to a file.
-                saveCdl()
-            } else {
-                Toast.makeText(this, "Gravando código executado (CDL)…", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        findViewById<android.widget.Button>(R.id.btnRip).setOnClickListener {
-            ripSprites()
-        }
-
-        findViewById<android.widget.Button>(R.id.btnExport).setOnClickListener {
-            Toast.makeText(this, "Exportando projeto…", Toast.LENGTH_SHORT).show()
-            thread {
-                val path = try { ExtractionExporter.export(this) } catch (e: Exception) { null }
-                runOnUiThread {
-                    if (path != null) {
-                        Toast.makeText(this, "Projeto exportado em:\n$path", Toast.LENGTH_LONG).show()
-                    } else {
-                        Toast.makeText(this, "Erro ao exportar (ROM carregada?)", Toast.LENGTH_LONG).show()
-                    }
-                }
-            }
+        findViewById<android.widget.Button>(R.id.btnLab).setOnClickListener {
+            openLab()
         }
     }
 
-    private fun saveCdl() {
-        withStoragePermission {
-            try {
-                val cdl = NativeBridge.nativeGetCdlMap()
-                val fileName = "cdl_${System.currentTimeMillis()}.bin"
-                val (stream, displayPath) = openDownloadsFile("cdl", fileName, "application/octet-stream")
-                    ?: throw java.io.IOException("não foi possível criar o arquivo")
-                stream.use { it.write(cdl) }
-                val coded = cdl.count { (it.toInt() and 0x03) != 0 }
-                Toast.makeText(
-                    this,
-                    "CDL salvo em $displayPath\n$coded bytes de código mapeados",
-                    Toast.LENGTH_LONG
-                ).show()
-            } catch (e: Exception) {
-                Toast.makeText(this, "Erro ao salvar CDL: ${e.message}", Toast.LENGTH_LONG).show()
-            }
+    private fun openLab() {
+        val rom = RomRepository.bytes
+        val mapper = RomRepository.mapper()
+        if (rom == null || mapper == null) {
+            Toast.makeText(this, "Nenhuma ROM carregada", Toast.LENGTH_SHORT).show()
+            return
         }
-    }
-
-    private fun ripSprites() {
-        try {
-            val oam = NativeBridge.nativeGetOam()
-            val vram = NativeBridge.nativeGetVram()
-            val cgram = NativeBridge.nativeGetCgram()
-            val nameBase = NativeBridge.nativeGetObjNameBase()
-            val nameSelect = NativeBridge.nativeGetObjNameSelect()
-            val sizeSelect = NativeBridge.nativeGetObjSizeSelect()
-
-            thread {
-                val groups = SpriteRipper.ripGroups(oam, vram, cgram, nameBase, nameSelect, sizeSelect)
-                runOnUiThread {
-                    if (groups.isEmpty()) {
-                        Toast.makeText(this, "Nenhum sprite visível na cena agora.", Toast.LENGTH_SHORT).show()
-                    } else {
-                        SpriteCapture.groups = groups
-                        SpriteCapture.cgram = cgram
-                        startActivity(android.content.Intent(this, SpriteViewerActivity::class.java))
+        Toast.makeText(this, "Abrindo Lab…", Toast.LENGTH_SHORT).show()
+        thread {
+            val cdl = try { NativeBridge.nativeGetCdlMap() } catch (t: Throwable) { ByteArray(0) }
+            // Discover contiguous executed-code regions from the CDL.
+            val regions = ArrayList<com.diogo.snesdeco.emu.CodeRegion>()
+            var i = 0
+            while (i < cdl.size) {
+                if ((cdl[i].toInt() and 0x03) != 0) {
+                    var j = i
+                    while (j < cdl.size && (cdl[j].toInt() and 0x03) != 0) j++
+                    if (j - i >= 3) {
+                        val (b, a) = mapper.toSnesAddress(i)
+                        regions.add(com.diogo.snesdeco.emu.CodeRegion(i, j - i, b, a))
                     }
-                }
+                    i = j
+                } else i++
             }
-        } catch (e: Exception) {
-            Toast.makeText(this, "Erro ao capturar sprites: ${e.message}", Toast.LENGTH_LONG).show()
+            com.diogo.snesdeco.emu.LabState.regions = regions.sortedByDescending { it.length }
+            runOnUiThread {
+                startActivity(android.content.Intent(this, LabActivity::class.java))
+            }
         }
     }
 

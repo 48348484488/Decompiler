@@ -12,8 +12,8 @@ android {
         applicationId "com.diogo.snesdeco"
         minSdk 24
         targetSdk 34
-        versionCode 13
-        versionName "1.3-extracao"
+        versionCode 14
+        versionName "1.4-lab"
 
         ndk {
             abiFilters "arm64-v8a", "armeabi-v7a"

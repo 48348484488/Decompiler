@@ -40,6 +40,11 @@
             android:exported="false"
             android:label="Sprites" />
 
+        <activity
+            android:name=".ui.LabActivity"
+            android:exported="false"
+            android:label="Lab" />
+
     </application>
 
 </manifest>
