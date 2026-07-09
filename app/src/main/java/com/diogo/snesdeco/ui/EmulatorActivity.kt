@@ -97,18 +97,20 @@ class EmulatorActivity : AppCompatActivity() {
             track.play()
             audioTrack = track
 
-            // AudioTrack is confirmed working (ps=3 PLAYING) but no sound was
-            // audible - the likely cause is device volume / silent mode. Check
-            // the media stream volume and tell the user plainly if it's the
-            // problem, rather than leaving them guessing.
-            val am = getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
-            val vol = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
-            val maxVol = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
-            val ringerMode = am.ringerMode
-            if (vol == 0) {
-                Toast.makeText(this, "SOM: o volume de MÍDIA está em 0. Aumente o volume com o jogo aberto (não é o volume de toque).", Toast.LENGTH_LONG).show()
-            } else if (ringerMode != android.media.AudioManager.RINGER_MODE_NORMAL) {
-                Toast.makeText(this, "SOM: celular em modo silencioso/vibração (volume mídia $vol/$maxVol). Em alguns aparelhos isso corta o som do jogo — tire do silencioso.", Toast.LENGTH_LONG).show()
+            // AudioTrack is confirmed working (ps=3 PLAYING) but sound wasn't
+            // audible. Force the media stream to a high volume so device
+            // volume / silent mode can't be the cause. (This raises MEDIA
+            // volume specifically, not ringer.)
+            try {
+                val am = getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
+                val maxVol = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+                am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, (maxVol * 0.8).toInt().coerceAtLeast(1), 0)
+                val vol = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
+                if (am.ringerMode != android.media.AudioManager.RINGER_MODE_NORMAL) {
+                    Toast.makeText(this, "Volume de mídia ajustado p/ $vol/$maxVol. Se ainda mudo, tire o celular do silencioso (ícone 🔕 na barra).", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                // Some devices restrict setStreamVolume; ignore and rely on manual volume.
             }
         } catch (e: Exception) {
             Toast.makeText(this, "Áudio: exceção - ${e.javaClass.simpleName}: ${e.message}", Toast.LENGTH_LONG).show()

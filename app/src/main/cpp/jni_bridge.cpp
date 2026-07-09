@@ -148,6 +148,11 @@ static void s9xdeco_init_core()
 	Settings.BlockInvalidVRAMAccessMaster = TRUE;
 	Settings.HDMATimingHack = 100;
 	Settings.DontSaveOopsSnapshot = TRUE;
+	// SNES hardware allows 34 sprite tiles per scanline. This was left at 0
+	// by the memset above, which culls EVERY sprite (backgrounds render but
+	// characters/objects vanish). Must be set for sprites to appear.
+	Settings.MaxSpriteTilesPerLine = 34;
+	Settings.InterpolationMethod = 2;
 
 	CPU.Flags = 0;
 
