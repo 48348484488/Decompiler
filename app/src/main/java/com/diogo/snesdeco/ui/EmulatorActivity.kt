@@ -29,6 +29,8 @@ class EmulatorActivity : AppCompatActivity() {
     @Volatile private var running = false
     private var loopThread: Thread? = null
     private var frameCounter = 0
+    private var totalSamplesSeen = 0L
+    private var reportedSampleCheck = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,30 +65,43 @@ class EmulatorActivity : AppCompatActivity() {
     }
 
     private fun setupAudio() {
-        val sampleRate = 32040
-        var minBuf = AudioTrack.getMinBufferSize(
-            sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT
-        )
-        if (minBuf <= 0) minBuf = sampleRate * 2 * 2 / 10 // ~100ms fallback if the device query fails
-        audioTrack = AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_GAME)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build()
+        try {
+            val sampleRate = 32040
+            var minBuf = AudioTrack.getMinBufferSize(
+                sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT
             )
-            .setAudioFormat(
-                AudioFormat.Builder()
-                    .setSampleRate(sampleRate)
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
-                    .build()
-            )
-            .setBufferSizeInBytes(minBuf * 4)
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build()
-        android.util.Log.i("SNESDeco", "AudioTrack state=${audioTrack?.state} playState=${audioTrack?.playState} bufBytes=${minBuf * 4}")
-        audioTrack?.play()
+            if (minBuf <= 0) minBuf = sampleRate * 2 * 2 / 10 // ~100ms fallback if the device query fails
+            val track = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_GAME)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setSampleRate(sampleRate)
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
+                        .build()
+                )
+                .setBufferSizeInBytes(minBuf * 4)
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .build()
+
+            if (track.state != AudioTrack.STATE_INITIALIZED) {
+                Toast.makeText(this, "Áudio: falhou ao inicializar (state=${track.state}, minBuf=$minBuf)", Toast.LENGTH_LONG).show()
+                audioTrack = null
+                return
+            }
+
+            track.play()
+            audioTrack = track
+            Toast.makeText(this, "Áudio OK: bufBytes=${minBuf * 4}, playState=${track.playState}", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Áudio: exceção - ${e.javaClass.simpleName}: ${e.message}", Toast.LENGTH_LONG).show()
+            audioTrack = null
+        }
     }
 
     private fun startLoop() {
@@ -105,6 +120,20 @@ class EmulatorActivity : AppCompatActivity() {
 
                 if (samples.isNotEmpty()) {
                     audioTrack?.write(samples, 0, samples.size)
+                }
+                totalSamplesSeen += samples.size
+
+                if (!reportedSampleCheck && frameCounter >= 120) {
+                    reportedSampleCheck = true
+                    val seen = totalSamplesSeen
+                    val trackState = audioTrack?.playState
+                    runOnUiThread {
+                        Toast.makeText(
+                            this,
+                            "Diagnóstico: $seen amostras geradas em 120 frames | AudioTrack playState=$trackState",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 }
                 if (frameCounter % 60 == 0) {
                     android.util.Log.i("SNESDeco", "frame=$frameCounter samples=${samples.size} playState=${audioTrack?.playState}")
