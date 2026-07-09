@@ -1,230 +1,199 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Root is a plain vertical LinearLayout: video area gets whatever space
-     is left (weight=1, height=0dp - the standard, battle-tested Android
-     pattern for "fill remaining space"), controlsArea is a fixed 210dp
-     strip below it. This replaces an earlier ConstraintLayout version
-     where the video ImageView rendered at a small, near-native-pixel
-     size despite 0dp/match-constraint sizing - switching to
-     LinearLayout weights sidesteps whatever was going on there. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<!-- Emulator screen modeled on standard mobile emulators (RetroArch / Snes9x
+     EX+ style): the video fills the whole screen (letterboxed to aspect
+     ratio, black bars on the sides in landscape), and the touch controls are
+     OVERLAID on top of it - a D-pad cross on the left, A/B/X/Y round buttons
+     on the right, L/R at the upper corners, Select/Start pills near the top.
+     Everything is one big FrameLayout so controls float over the video. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="#000000"
     android:keepScreenOn="true">
 
-    <FrameLayout
-        android:id="@+id/videoContainer"
+    <ImageView
+        android:id="@+id/videoView"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:background="#000000">
+        android:layout_height="match_parent"
+        android:scaleType="center" />
+
+    <!-- Overlay readouts (kept from before, small and translucent) -->
+    <TextView
+        android:id="@+id/pcReadout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:background="#66000000"
+        android:fontFamily="monospace"
+        android:textColor="@color/mono_green"
+        android:textSize="10sp"
+        android:padding="4dp"
+        android:text="PC: --:----" />
+
+    <TextView
+        android:id="@+id/cdlReadout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:background="#66000000"
+        android:fontFamily="monospace"
+        android:textColor="@color/text_secondary"
+        android:textSize="9sp"
+        android:padding="4dp"
+        android:text="CDL 0%" />
+
+    <!-- ===== LEFT SIDE ===== -->
+
+    <!-- L shoulder, upper-left -->
+    <Button
+        android:id="@+id/btnL"
+        android:layout_width="60dp"
+        android:layout_height="40dp"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="44dp"
+        android:background="@drawable/btn_pill"
+        android:text="L"
+        android:textColor="#DDFFFFFF"
+        android:textSize="13sp" />
+
+    <!-- Select pill, top -->
+    <Button
+        android:id="@+id/btnSelect"
+        android:layout_width="wrap_content"
+        android:layout_height="34dp"
+        android:layout_gravity="top|start"
+        android:layout_marginStart="90dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/btn_pill"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:text="Select"
+        android:textColor="#DDFFFFFF"
+        android:textSize="10sp"
+        android:textAllCaps="false" />
+
+    <!-- D-pad cross, lower-left. Transparent ImageView shows the cross art;
+         four invisible buttons on top handle the touch zones. -->
+    <FrameLayout
+        android:id="@+id/dpadFrame"
+        android:layout_width="180dp"
+        android:layout_height="180dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="20dp"
+        android:layout_marginBottom="24dp">
 
         <ImageView
-            android:id="@+id/videoView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:scaleType="center" />
+            android:src="@drawable/dpad_cross"
+            android:contentDescription="dpad" />
 
-        <TextView
-            android:id="@+id/pcReadout"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="top|start"
-            android:background="#AA000000"
-            android:fontFamily="monospace"
-            android:textColor="@color/mono_green"
-            android:textSize="11sp"
-            android:padding="6dp"
-            android:text="PC: --:----" />
+        <!-- Touch zones: up/down/left/right occupy the arms of the cross -->
+        <View
+            android:id="@+id/btnUp"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_gravity="top|center_horizontal" />
 
-        <TextView
-            android:id="@+id/cdlReadout"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="top|end"
-            android:background="#AA000000"
-            android:fontFamily="monospace"
-            android:textColor="@color/text_secondary"
-            android:textSize="10sp"
-            android:padding="6dp"
-            android:text="CDL: 0%" />
+        <View
+            android:id="@+id/btnDown"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_gravity="bottom|center_horizontal" />
 
+        <View
+            android:id="@+id/btnLeft"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_gravity="center_vertical|start" />
+
+        <View
+            android:id="@+id/btnRight"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_gravity="center_vertical|end" />
     </FrameLayout>
 
-    <!-- Control bar, 210dp fixed. Two horizontal bands, verified by hand
-         so nothing overlaps:
-           Row 1 (0-40dp):    L ... SELECT START ... R
-           Row 2 (40-210dp):  D-pad (left half) | A/B/X/Y diamond (right half)
-         Row 2's contents are anchored from row1Guideline downward
-         (D-pad) or from the container bottom upward (diamond); both
-         chains fit inside 210dp with margin to spare (checked below). -->
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/controlsArea"
-        android:layout_width="match_parent"
-        android:layout_height="210dp"
-        android:background="@color/surface">
+    <!-- ===== RIGHT SIDE ===== -->
 
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/row1Guide"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            app:layout_constraintGuide_begin="40dp" />
+    <!-- R shoulder, upper-right -->
+    <Button
+        android:id="@+id/btnR"
+        android:layout_width="60dp"
+        android:layout_height="40dp"
+        android:layout_gravity="top|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="44dp"
+        android:background="@drawable/btn_pill"
+        android:text="R"
+        android:textColor="#DDFFFFFF"
+        android:textSize="13sp" />
 
-        <!-- Row 1 -->
-        <Button
-            android:id="@+id/btnL"
-            android:layout_width="56dp"
-            android:layout_height="34dp"
-            android:text="L"
-            android:textSize="12sp"
-            android:backgroundTint="@color/accent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            android:layout_marginTop="4dp"
-            android:layout_marginStart="20dp" />
+    <!-- Start pill, top -->
+    <Button
+        android:id="@+id/btnStart"
+        android:layout_width="wrap_content"
+        android:layout_height="34dp"
+        android:layout_gravity="top|end"
+        android:layout_marginEnd="90dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/btn_pill"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:text="Start"
+        android:textColor="#DDFFFFFF"
+        android:textSize="10sp"
+        android:textAllCaps="false" />
 
-        <Button
-            android:id="@+id/btnR"
-            android:layout_width="56dp"
-            android:layout_height="34dp"
-            android:text="R"
-            android:textSize="12sp"
-            android:backgroundTint="@color/accent"
-            app:layout_constraintTop_toTopOf="@id/btnL"
-            app:layout_constraintEnd_toEndOf="parent"
-            android:layout_marginEnd="20dp" />
-
-        <Button
-            android:id="@+id/btnSelect"
-            android:layout_width="wrap_content"
-            android:layout_height="30dp"
-            android:text="SELECT"
-            android:textSize="9sp"
-            android:backgroundTint="@color/bg_dark"
-            android:textColor="@color/text_secondary"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            app:layout_constraintTop_toTopOf="@id/btnL"
-            app:layout_constraintEnd_toStartOf="@id/btnStart"
-            app:layout_constraintStart_toEndOf="@id/btnL" />
-
-        <Button
-            android:id="@+id/btnStart"
-            android:layout_width="wrap_content"
-            android:layout_height="30dp"
-            android:text="START"
-            android:textSize="9sp"
-            android:backgroundTint="@color/bg_dark"
-            android:textColor="@color/text_secondary"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            app:layout_constraintTop_toTopOf="@id/btnL"
-            app:layout_constraintStart_toEndOf="@id/btnSelect"
-            app:layout_constraintEnd_toStartOf="@id/btnR" />
-
-        <!-- Row 2: D-pad. Needs up(44)+gap4+mid(44)+gap4+down(44)=140dp
-             starting 8dp below row1Guide(40) -> bottom at 40+8+140=188,
-             comfortably inside 210dp. -->
-        <Button
-            android:id="@+id/btnUp"
-            android:layout_width="50dp"
-            android:layout_height="44dp"
-            android:text="▲"
-            android:backgroundTint="@color/accent_dim"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/row1Guide"
-            android:layout_marginStart="30dp"
-            android:layout_marginTop="8dp" />
-
-        <Button
-            android:id="@+id/btnLeft"
-            android:layout_width="50dp"
-            android:layout_height="44dp"
-            android:text="◀"
-            android:backgroundTint="@color/accent_dim"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/btnUp"
-            android:layout_marginStart="4dp"
-            android:layout_marginTop="4dp" />
-
-        <Button
-            android:id="@+id/btnRight"
-            android:layout_width="50dp"
-            android:layout_height="44dp"
-            android:text="▶"
-            android:backgroundTint="@color/accent_dim"
-            app:layout_constraintStart_toEndOf="@id/btnLeft"
-            app:layout_constraintTop_toTopOf="@id/btnLeft"
-            android:layout_marginStart="50dp" />
-
-        <Button
-            android:id="@+id/btnDown"
-            android:layout_width="50dp"
-            android:layout_height="44dp"
-            android:text="▼"
-            android:backgroundTint="@color/accent_dim"
-            app:layout_constraintStart_toStartOf="@id/btnUp"
-            app:layout_constraintTop_toBottomOf="@id/btnLeft"
-            android:layout_marginTop="4dp" />
-
-        <!-- Row 2: A/B/X/Y diamond, anchored bottom-up so the math is
-             easy to verify: B(44)+gap6+[Y/A row](44)+gap6+X(44)=144dp,
-             plus marginBottom 10 = 154dp, so X's top lands at
-             210-154=56dp - well clear of row1 (ends at 40dp). -->
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/diamondGuide"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            app:layout_constraintGuide_end="90dp" />
-
-        <Button
-            android:id="@+id/btnB"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:text="B"
-            android:backgroundTint="@color/snes_purple"
-            app:layout_constraintStart_toEndOf="@id/btnY"
-            app:layout_constraintEnd_toStartOf="@id/btnA"
-            app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_marginBottom="10dp" />
-
-        <Button
-            android:id="@+id/btnY"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:text="Y"
-            android:backgroundTint="@color/snes_purple"
-            app:layout_constraintEnd_toEndOf="@id/diamondGuide"
-            app:layout_constraintBottom_toTopOf="@id/btnB"
-            android:layout_marginEnd="6dp"
-            android:layout_marginBottom="6dp" />
-
-        <Button
-            android:id="@+id/btnA"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:text="A"
-            android:backgroundTint="@color/snes_purple"
-            app:layout_constraintStart_toStartOf="@id/diamondGuide"
-            app:layout_constraintBottom_toTopOf="@id/btnB"
-            android:layout_marginStart="6dp"
-            android:layout_marginBottom="6dp" />
+    <!-- A/B/X/Y diamond, lower-right. Positioned with a nested FrameLayout so
+         the four round buttons form the classic diamond. -->
+    <FrameLayout
+        android:layout_width="200dp"
+        android:layout_height="200dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="20dp">
 
         <Button
             android:id="@+id/btnX"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_gravity="top|center_horizontal"
+            android:background="@drawable/btn_round"
             android:text="X"
-            android:backgroundTint="@color/snes_purple"
-            app:layout_constraintStart_toEndOf="@id/btnY"
-            app:layout_constraintEnd_toStartOf="@id/btnA"
-            app:layout_constraintBottom_toTopOf="@id/btnY"
-            android:layout_marginBottom="6dp" />
+            android:textColor="#DDFFFFFF"
+            android:textSize="16sp" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+        <Button
+            android:id="@+id/btnB"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_gravity="bottom|center_horizontal"
+            android:background="@drawable/btn_round"
+            android:text="B"
+            android:textColor="#DDFFFFFF"
+            android:textSize="16sp" />
 
-</LinearLayout>
+        <Button
+            android:id="@+id/btnY"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_gravity="center_vertical|start"
+            android:background="@drawable/btn_round"
+            android:text="Y"
+            android:textColor="#DDFFFFFF"
+            android:textSize="16sp" />
+
+        <Button
+            android:id="@+id/btnA"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_gravity="center_vertical|end"
+            android:background="@drawable/btn_round"
+            android:text="A"
+            android:textColor="#DDFFFFFF"
+            android:textSize="16sp" />
+    </FrameLayout>
+
+</FrameLayout>

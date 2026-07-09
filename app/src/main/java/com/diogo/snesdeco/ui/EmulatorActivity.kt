@@ -6,7 +6,6 @@ import android.media.AudioFormat
 import android.media.AudioTrack
 import android.os.Bundle
 import android.view.MotionEvent
-import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -212,14 +211,7 @@ class EmulatorActivity : AppCompatActivity() {
 
         runOnUiThread {
             pcReadout.text = "PC: %02X:%04X".format(bank, addr)
-            val container = findViewById<android.view.View>(R.id.videoContainer)
-            cdlReadout.text = "CDL %.1f%% | img=%dx%d cont=%dx%d | aud=%s ps=%s".format(
-                pct,
-                videoView.width, videoView.height,
-                container.width, container.height,
-                if (audioTrack == null) "NULL" else "ok",
-                audioTrack?.playState?.toString() ?: "-"
-            )
+            cdlReadout.text = "CDL %.1f%%".format(pct)
         }
     }
 
@@ -239,11 +231,17 @@ class EmulatorActivity : AppCompatActivity() {
     }
 
     private fun bindButton(viewId: Int, button: Int) {
-        val v = findViewById<Button>(viewId)
-        v.setOnTouchListener { _, event ->
+        val v = findViewById<android.view.View>(viewId)
+        v.setOnTouchListener { view, event ->
             when (event.action) {
-                MotionEvent.ACTION_DOWN -> NativeBridge.nativeSetButton(button, true)
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> NativeBridge.nativeSetButton(button, false)
+                MotionEvent.ACTION_DOWN -> {
+                    NativeBridge.nativeSetButton(button, true)
+                    view.alpha = 0.6f
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    NativeBridge.nativeSetButton(button, false)
+                    view.alpha = 1.0f
+                }
             }
             true
         }
