@@ -16,8 +16,8 @@ import com.diogo.snesdeco.rom.RomRepository
  *     codigo/cdl.bin        - raw code/data log map
  *     codigo/regioes.txt    - list of discovered executed-code regions
  *     codigo/disasm_cdl.asm - 65816 disassembly of those regions
- *     sprites/*.png         - unique assembled sprites collected
- *     paletas/*.png         - unique CGRAM palettes collected
+ *     sprites/  (PNGs)      - unique assembled sprites collected
+ *     paletas/  (PNGs)      - unique CGRAM palettes collected
  */
 object ExtractionExporter {
 
