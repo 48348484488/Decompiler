@@ -34,6 +34,10 @@ object NativeBridge {
     external fun nativeLoadState(data: ByteArray): Boolean
     external fun nativeCapturedBytes(): Int
     external fun nativeRomSize(): Int
+    // OpenSL ES audio backend
+    external fun nativeAudioInit(sampleRate: Int): Boolean
+    external fun nativeAudioPump()
+    external fun nativeAudioShutdown()
     // Live RAM explorer + value search (Cheat-Engine style)
     external fun nativeReadRam(offset: Int, length: Int): ByteArray
     external fun nativeWriteRam(offset: Int, value: Int): Int

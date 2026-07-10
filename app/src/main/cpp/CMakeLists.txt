@@ -76,6 +76,7 @@ set(S9X_CORE_SOURCES
 add_library(snesdeco_core SHARED
     ${S9X_CORE_SOURCES}
     jni_bridge.cpp
+    opensl_audio.cpp
 )
 
 target_include_directories(snesdeco_core PRIVATE
@@ -85,5 +86,6 @@ target_include_directories(snesdeco_core PRIVATE
 )
 
 find_library(log-lib log)
+find_library(opensl-lib OpenSLES)
 
-target_link_libraries(snesdeco_core ${log-lib})
+target_link_libraries(snesdeco_core ${log-lib} ${opensl-lib})

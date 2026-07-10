@@ -411,6 +411,34 @@ Java_com_diogo_snesdeco_emu_NativeBridge_nativeCapturedBytes(JNIEnv *, jobject)
 	return coded;
 }
 
+// ---- OpenSL ES audio backend (more reliable than Kotlin AudioTrack) -------
+extern "C" bool SndOpenSLInit(int sampleRate);
+extern "C" void SndOpenSLEnqueue(const int16_t *samples, int count);
+extern "C" void SndOpenSLShutdown();
+
+JNIEXPORT jboolean JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeAudioInit(JNIEnv *, jobject, jint sampleRate)
+{
+	return SndOpenSLInit((int) sampleRate) ? JNI_TRUE : JNI_FALSE;
+}
+
+// Pull audio from the core and push straight into OpenSL - no JNI array copy
+// back to Kotlin, lower latency and fewer moving parts.
+JNIEXPORT void JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeAudioPump(JNIEnv *, jobject)
+{
+	int avail = (int) s9x_audio_accum.size();
+	if (avail <= 0) return;
+	SndOpenSLEnqueue(s9x_audio_accum.data(), avail);
+	s9x_audio_accum.clear();
+}
+
+JNIEXPORT void JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeAudioShutdown(JNIEnv *, jobject)
+{
+	SndOpenSLShutdown();
+}
+
 JNIEXPORT jint JNICALL
 Java_com_diogo_snesdeco_emu_NativeBridge_nativeRomSize(JNIEnv *, jobject)
 {

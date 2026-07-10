@@ -1,9 +1,6 @@
 package com.diogo.snesdeco.ui
 
 import android.graphics.Bitmap
-import android.media.AudioAttributes
-import android.media.AudioFormat
-import android.media.AudioTrack
 import android.os.Bundle
 import android.view.MotionEvent
 import android.widget.ImageView
@@ -23,14 +20,12 @@ class EmulatorActivity : AppCompatActivity() {
     private lateinit var pcReadout: TextView
     private lateinit var cdlReadout: TextView
 
-    private var audioTrack: AudioTrack? = null
+    @Volatile private var audioReady = false
+    @Volatile private var turboActive = false
 
     @Volatile private var running = false
     private var loopThread: Thread? = null
     private var frameCounter = 0
-    private var totalSamplesSeen = 0L
-    private var reportedSampleCheck = false
-    private var reportedWriteError = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,64 +61,28 @@ class EmulatorActivity : AppCompatActivity() {
 
     private fun setupAudio() {
         try {
-            val sampleRate = 48000
-            // Some OEM Androids (MIUI etc.) silence apps that never request
-            // audio focus; ask for it before playing.
+            // Request audio focus (some OEM skins mute apps that don't hold it).
             try {
                 val am = getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
                 @Suppress("DEPRECATION")
                 am.requestAudioFocus(null, android.media.AudioManager.STREAM_MUSIC, android.media.AudioManager.AUDIOFOCUS_GAIN)
+                // Nudge media volume up so device volume isn't the culprit.
+                val maxVol = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
+                if (am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC) == 0) {
+                    am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, (maxVol * 0.7).toInt().coerceAtLeast(1), 0)
+                }
             } catch (_: Exception) { }
 
-            var minBuf = AudioTrack.getMinBufferSize(
-                sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT
-            )
-            if (minBuf <= 0) minBuf = sampleRate * 2 * 2 / 10
-            val track = AudioTrack.Builder()
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_GAME)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build()
-                )
-                .setAudioFormat(
-                    AudioFormat.Builder()
-                        .setSampleRate(sampleRate)
-                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
-                        .build()
-                )
-                .setBufferSizeInBytes(minBuf * 4)
-                .setTransferMode(AudioTrack.MODE_STREAM)
-                .build()
-
-            if (track.state != AudioTrack.STATE_INITIALIZED) {
-                Toast.makeText(this, "Áudio: falhou ao inicializar (state=${track.state}, minBuf=$minBuf)", Toast.LENGTH_LONG).show()
-                audioTrack = null
-                return
-            }
-
-            track.play()
-            audioTrack = track
-
-            // AudioTrack is confirmed working (ps=3 PLAYING) but sound wasn't
-            // audible. Force the media stream to a high volume so device
-            // volume / silent mode can't be the cause. (This raises MEDIA
-            // volume specifically, not ringer.)
-            try {
-                val am = getSystemService(android.content.Context.AUDIO_SERVICE) as android.media.AudioManager
-                val maxVol = am.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)
-                am.setStreamVolume(android.media.AudioManager.STREAM_MUSIC, (maxVol * 0.8).toInt().coerceAtLeast(1), 0)
-                val vol = am.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)
-                if (am.ringerMode != android.media.AudioManager.RINGER_MODE_NORMAL) {
-                    Toast.makeText(this, "Volume de mídia ajustado p/ $vol/$maxVol. Se ainda mudo, tire o celular do silencioso (ícone 🔕 na barra).", Toast.LENGTH_LONG).show()
-                }
-            } catch (e: Exception) {
-                // Some devices restrict setStreamVolume; ignore and rely on manual volume.
+            // OpenSL ES runs audio in the native engine - more reliable than
+            // AudioTrack, which reported PLAYING but stayed silent on device.
+            val ok = NativeBridge.nativeAudioInit(48000)
+            audioReady = ok
+            if (!ok) {
+                Toast.makeText(this, "Áudio: OpenSL ES falhou ao iniciar.", Toast.LENGTH_LONG).show()
             }
         } catch (e: Exception) {
+            audioReady = false
             Toast.makeText(this, "Áudio: exceção - ${e.javaClass.simpleName}: ${e.message}", Toast.LENGTH_LONG).show()
-            audioTrack = null
         }
     }
 
@@ -139,40 +98,11 @@ class EmulatorActivity : AppCompatActivity() {
                 val w = NativeBridge.nativeGetFrameWidth()
                 val h = NativeBridge.nativeGetFrameHeight()
                 val pixels = NativeBridge.nativeGetVideoFrame()
-                val samples = NativeBridge.nativeGetAudioSamples()
 
-                if (samples.isNotEmpty()) {
-                    val written = audioTrack?.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING) ?: -999
-                    if (written < 0 && !reportedWriteError) {
-                        reportedWriteError = true
-                        runOnUiThread {
-                            Toast.makeText(this, "ERRO write audio: código $written", Toast.LENGTH_LONG).show()
-                        }
-                    }
-                }
-                totalSamplesSeen += samples.size
-
-                if (!reportedSampleCheck && frameCounter >= 120) {
-                    reportedSampleCheck = true
-                    val seen = totalSamplesSeen
-                    val trackState = audioTrack?.playState
-                    // Peak amplitude across the samples we just got tells us if
-                    // the DSP is producing real audio or just silence (zeros).
-                    var peak = 0
-                    for (s in samples) {
-                        val a = kotlin.math.abs(s.toInt())
-                        if (a > peak) peak = a
-                    }
-                    runOnUiThread {
-                        Toast.makeText(
-                            this,
-                            "AUDIO: pico=$peak (0=mudo, >0=tem som) | total=$seen | ps=$trackState",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                }
-                if (frameCounter % 60 == 0) {
-                    android.util.Log.i("SNESDeco", "frame=$frameCounter samples=${samples.size} playState=${audioTrack?.playState}")
+                // Push audio straight from the core into OpenSL ES. In turbo we
+                // skip audio (it would sound sped-up/garbled) and run flat out.
+                if (audioReady && !turboActive) {
+                    NativeBridge.nativeAudioPump()
                 }
 
                 renderFrame(pixels, w, h)
@@ -208,6 +138,12 @@ class EmulatorActivity : AppCompatActivity() {
                     } catch (t: Throwable) {
                         com.diogo.snesdeco.emu.ExtractionSession.busy.set(false)
                     }
+                }
+
+                // Turbo: skip frame pacing to run as fast as the CPU allows.
+                if (turboActive) {
+                    nextFrameTime = System.nanoTime()
+                    continue
                 }
 
                 nextFrameTime += frameIntervalNs
@@ -278,6 +214,15 @@ class EmulatorActivity : AppCompatActivity() {
         findViewById<android.widget.Button>(R.id.btnRestart).setOnClickListener {
             NativeBridge.nativeResetEmu()
             Toast.makeText(this, "Jogo reiniciado.", Toast.LENGTH_SHORT).show()
+        }
+
+        // Turbo: hold to fast-forward, release to return to normal speed.
+        findViewById<android.widget.Button>(R.id.btnTurbo).setOnTouchListener { view, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> { turboActive = true; view.alpha = 0.6f }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> { turboActive = false; view.alpha = 1.0f }
+            }
+            true
         }
 
         findViewById<android.widget.Button>(R.id.btnTools).setOnClickListener {
@@ -393,14 +338,16 @@ class EmulatorActivity : AppCompatActivity() {
         super.onPause()
         running = false
         loopThread?.join(200)
-        audioTrack?.pause()
-        audioTrack?.flush()
+        if (audioReady) {
+            NativeBridge.nativeAudioShutdown()
+            audioReady = false
+        }
     }
 
     override fun onResume() {
         super.onResume()
         if (NativeBridge.nativeIsRomLoaded() && !running) {
-            audioTrack?.play()
+            setupAudio()
             startLoop()
         }
     }
@@ -409,7 +356,9 @@ class EmulatorActivity : AppCompatActivity() {
         super.onDestroy()
         running = false
         loopThread?.join(200)
-        audioTrack?.stop()
-        audioTrack?.release()
+        if (audioReady) {
+            NativeBridge.nativeAudioShutdown()
+            audioReady = false
+        }
     }
 }
