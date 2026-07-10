@@ -40,6 +40,7 @@ static int s9x_last_frame_width = SNES_WIDTH;
 static int s9x_last_frame_height = SNES_HEIGHT;
 
 static std::vector<int16_t> s9x_audio_accum; // interleaved stereo samples collected this call to nativeRunFrame
+static volatile int g_last_sample_count = 0;  // diagnostic: raw S9xGetSampleCount
 
 // ---------------------------------------------------------------------
 // snes9x porting interface (the functions the core calls into us for).
@@ -96,6 +97,7 @@ void S9xSyncSpeed(void)
 	}
 
 	int avail = S9xGetSampleCount();
+	g_last_sample_count = avail; // diagnostic
 	if (avail <= 0)
 		return;
 
@@ -141,6 +143,7 @@ static void s9xdeco_init_core()
 	Settings.FrameTimeNTSC = 16667;
 	Settings.SixteenBitSound = TRUE;
 	Settings.Stereo = TRUE;
+	Settings.SoundSync = TRUE;
 	// 48000 is the native rate of virtually all Android devices; odd rates
 	// like 32040 are accepted but SILENTLY produce no sound on some hardware.
 	// The snes9x resampler converts from the DSP's ~31950 Hz input rate.
@@ -430,6 +433,20 @@ JNIEXPORT jint JNICALL
 Java_com_diogo_snesdeco_emu_NativeBridge_nativeAudioTotalK(JNIEnv *, jobject)
 {
 	return (jint) (SndOpenSLTotalEnqueued() / 1000);
+}
+
+// Diagnostics to pinpoint silence: raw sample count from the DSP per frame,
+// and whether the core thinks it's muted.
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeAudioSampleCount(JNIEnv *, jobject)
+{
+	return (jint) g_last_sample_count;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeAudioIsMuted(JNIEnv *, jobject)
+{
+	return Settings.Mute ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL

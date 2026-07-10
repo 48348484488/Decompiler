@@ -118,10 +118,12 @@ class EmulatorActivity : AppCompatActivity() {
                     audioDiagShown = true
                     val peak = NativeBridge.nativeAudioPeak()
                     val totalK = NativeBridge.nativeAudioTotalK()
+                    val sc = NativeBridge.nativeAudioSampleCount()
+                    val muted = NativeBridge.nativeAudioIsMuted()
                     runOnUiThread {
                         Toast.makeText(
                             this,
-                            "ÁUDIO: init=$audioReady | pico=$peak (0=silêncio) | ${totalK}K amostras enviadas ao OpenSL",
+                            "ÁUDIO: pico=$peak sc=$sc mute=$muted | ${totalK}K enviadas | init=$audioReady",
                             Toast.LENGTH_LONG
                         ).show()
                     }
