@@ -34,6 +34,14 @@ object NativeBridge {
     external fun nativeLoadState(data: ByteArray): Boolean
     external fun nativeCapturedBytes(): Int
     external fun nativeRomSize(): Int
+    // Live RAM explorer + value search (Cheat-Engine style)
+    external fun nativeReadRam(offset: Int, length: Int): ByteArray
+    external fun nativeWriteRam(offset: Int, value: Int): Int
+    external fun nativeSearchReset(value: Int): Int
+    external fun nativeSearchEqual(value: Int): Int
+    external fun nativeSearchDelta(dir: Int): Int
+    external fun nativeSearchCount(): Int
+    external fun nativeSearchResults(max: Int): IntArray
     external fun nativeGetCgram(): ByteArray
     external fun nativeGetVram(): ByteArray
     external fun nativeGetOam(): IntArray

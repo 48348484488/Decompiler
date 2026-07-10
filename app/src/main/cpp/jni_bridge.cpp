@@ -417,6 +417,115 @@ Java_com_diogo_snesdeco_emu_NativeBridge_nativeRomSize(JNIEnv *, jobject)
 	return (jint) Memory.CalculatedSize;
 }
 
+// ---- Live RAM explorer + value search (Cheat-Engine-style) ----------------
+// WRAM is 128 KB (Memory.RAM). Read a window for the live hex/watch view.
+JNIEXPORT jbyteArray JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeReadRam(JNIEnv *env, jobject, jint offset, jint length)
+{
+	if (offset < 0 || length <= 0) return env->NewByteArray(0);
+	uint32_t off = (uint32_t) offset;
+	uint32_t len = (uint32_t) length;
+	if (off >= 0x20000) return env->NewByteArray(0);
+	if (off + len > 0x20000) len = 0x20000 - off;
+	jbyteArray arr = env->NewByteArray((jsize) len);
+	if (arr == nullptr) return nullptr;
+	env->SetByteArrayRegion(arr, 0, (jsize) len, reinterpret_cast<const jbyte *>(Memory.RAM + off));
+	return arr;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeWriteRam(JNIEnv *, jobject, jint offset, jint value)
+{
+	if (offset < 0 || offset >= 0x20000) return 0;
+	Memory.RAM[offset] = (uint8_t) (value & 0xFF);
+	return 1;
+}
+
+// Search state lives here: a list of candidate WRAM addresses being narrowed.
+static std::vector<uint32_t> s9x_search_addrs;
+static std::vector<uint8_t>  s9x_search_vals;
+
+// Start a fresh search: every WRAM byte equal to [value] (0-255), or if
+// value < 0, snapshot ALL bytes (for later change-based filtering).
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeSearchReset(JNIEnv *, jobject, jint value)
+{
+	s9x_search_addrs.clear();
+	s9x_search_vals.clear();
+	for (uint32_t i = 0; i < 0x20000; i++)
+	{
+		uint8_t v = Memory.RAM[i];
+		if (value < 0 || v == (uint8_t) value)
+		{
+			s9x_search_addrs.push_back(i);
+			s9x_search_vals.push_back(v);
+		}
+	}
+	return (jint) s9x_search_addrs.size();
+}
+
+// Narrow the current candidates to those now equal to [value].
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeSearchEqual(JNIEnv *, jobject, jint value)
+{
+	std::vector<uint32_t> na;
+	std::vector<uint8_t>  nv;
+	for (size_t i = 0; i < s9x_search_addrs.size(); i++)
+	{
+		uint32_t a = s9x_search_addrs[i];
+		uint8_t v = Memory.RAM[a];
+		if (v == (uint8_t) value) { na.push_back(a); nv.push_back(v); }
+	}
+	s9x_search_addrs.swap(na);
+	s9x_search_vals.swap(nv);
+	return (jint) s9x_search_addrs.size();
+}
+
+// Narrow to candidates whose value changed the given way vs the last snapshot:
+// dir > 0 increased, dir < 0 decreased, dir == 0 unchanged. Updates snapshot.
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeSearchDelta(JNIEnv *, jobject, jint dir)
+{
+	std::vector<uint32_t> na;
+	std::vector<uint8_t>  nv;
+	for (size_t i = 0; i < s9x_search_addrs.size(); i++)
+	{
+		uint32_t a = s9x_search_addrs[i];
+		uint8_t now = Memory.RAM[a];
+		uint8_t was = s9x_search_vals[i];
+		bool keep = (dir > 0 && now > was) || (dir < 0 && now < was) || (dir == 0 && now == was);
+		if (keep) { na.push_back(a); nv.push_back(now); }
+	}
+	s9x_search_addrs.swap(na);
+	s9x_search_vals.swap(nv);
+	return (jint) s9x_search_addrs.size();
+}
+
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeSearchCount(JNIEnv *, jobject)
+{
+	return (jint) s9x_search_addrs.size();
+}
+
+// Return up to [max] current candidate addresses (each paired with its live
+// value) as an int array: [addr0, val0, addr1, val1, ...].
+JNIEXPORT jintArray JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeSearchResults(JNIEnv *env, jobject, jint max)
+{
+	int n = (int) s9x_search_addrs.size();
+	if (max > 0 && n > max) n = max;
+	std::vector<jint> out((size_t) n * 2);
+	for (int i = 0; i < n; i++)
+	{
+		out[i * 2] = (jint) s9x_search_addrs[i];
+		out[i * 2 + 1] = (jint) Memory.RAM[s9x_search_addrs[i]];
+	}
+	jintArray arr = env->NewIntArray(n * 2);
+	if (arr == nullptr) return nullptr;
+	env->SetIntArrayRegion(arr, 0, n * 2, out.data());
+	return arr;
+}
+
 // Snapshot the 256-entry CGRAM palette (BGR555, 2 bytes each = 512 bytes).
 JNIEXPORT jbyteArray JNICALL
 Java_com_diogo_snesdeco_emu_NativeBridge_nativeGetCgram(JNIEnv *env, jobject)

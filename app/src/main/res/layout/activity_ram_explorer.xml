@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg_dark">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="10dp"
+        android:text="🧠 Explorador de RAM — ache o que muda (vida, dinheiro…)"
+        android:textColor="@color/text_primary"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:fontFamily="monospace" />
+
+    <TextView
+        android:id="@+id/ramHint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:text="1) Digite o valor atual (ex: sua vida) e toque Buscar. 2) Deixe o valor mudar no jogo, volte e busque de novo. Repita até sobrarem poucos endereços."
+        android:textColor="@color/text_secondary"
+        android:textSize="11sp"
+        android:fontFamily="monospace" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <EditText
+            android:id="@+id/valueInput"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="valor (0-255)"
+            android:inputType="number"
+            android:textColorHint="@color/text_secondary"
+            android:textColor="@color/text_primary"
+            android:fontFamily="monospace" />
+
+        <Button
+            android:id="@+id/searchButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="Buscar"
+            android:textAllCaps="false"
+            android:backgroundTint="@color/accent" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="8dp">
+
+        <Button
+            android:id="@+id/decreasedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="↓ Diminuiu"
+            android:textAllCaps="false"
+            android:textSize="12sp"
+            android:backgroundTint="@color/snes_purple" />
+
+        <Button
+            android:id="@+id/increasedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:text="↑ Aumentou"
+            android:textAllCaps="false"
+            android:textSize="12sp"
+            android:backgroundTint="@color/snes_purple" />
+
+        <Button
+            android:id="@+id/unchangedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="6dp"
+            android:text="= Igual"
+            android:textAllCaps="false"
+            android:textSize="12sp"
+            android:backgroundTint="@color/snes_purple" />
+
+        <Button
+            android:id="@+id/newSearchButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="Nova"
+            android:textAllCaps="false"
+            android:textSize="12sp"
+            android:backgroundTint="@color/accent_dim" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/resultCount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:text="Nenhuma busca ainda"
+        android:textColor="@color/mono_green"
+        android:textSize="12sp"
+        android:fontFamily="monospace" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/resultsList"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@color/surface"
+        android:padding="4dp" />
+
+</LinearLayout>

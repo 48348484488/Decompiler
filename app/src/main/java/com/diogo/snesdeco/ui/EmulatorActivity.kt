@@ -31,8 +31,6 @@ class EmulatorActivity : AppCompatActivity() {
     private var totalSamplesSeen = 0L
     private var reportedSampleCheck = false
     private var reportedWriteError = false
-    @Volatile private var sandboxFrozen = false
-    private var savedState: ByteArray? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -136,32 +134,7 @@ class EmulatorActivity : AppCompatActivity() {
             var nextFrameTime = System.nanoTime()
 
             while (running) {
-                // Sandbox: if we've hit the edge of the captured slice, stop
-                // advancing the game (freeze on the last captured frame) but
-                // keep the loop alive so the screen stays shown.
-                if (sandboxFrozen) {
-                    try { Thread.sleep(50) } catch (e: InterruptedException) {}
-                    continue
-                }
-
                 NativeBridge.nativeRunFrame()
-
-                // Detect boundary right after running: did the game try to
-                // execute code that was never captured?
-                if (NativeBridge.nativeIsSandbox() && NativeBridge.nativeBoundaryHit() && !sandboxFrozen) {
-                    sandboxFrozen = true
-                    val off = NativeBridge.nativeBoundaryOffset()
-                    runOnUiThread {
-                        findViewById<android.widget.Button>(R.id.btnSandbox).text = "⏸ Congelado (toque=sair)"
-                        Toast.makeText(
-                            this,
-                            "⏸ Congelado: o jogo chegou no fim do trecho capturado (tentou rodar código novo em offset %06X). Tudo que rodou até aqui É código capturado.".format(off),
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                    // Render the last good frame once more, then idle.
-                    continue
-                }
 
                 val w = NativeBridge.nativeGetFrameWidth()
                 val h = NativeBridge.nativeGetFrameHeight()
@@ -285,8 +258,6 @@ class EmulatorActivity : AppCompatActivity() {
                 " | EXT: ${com.diogo.snesdeco.emu.ExtractionSession.spriteCount()}spr ${com.diogo.snesdeco.emu.ExtractionSession.paletteCount()}pal"
             else ""
             cdlReadout.text = "CDL %.1f%%%s".format(pct, ext)
-            // Live capture bar at the top.
-            findViewById<CoverageBar>(R.id.liveCoverage)?.setCdl(cdl)
         }
     }
 
@@ -304,120 +275,69 @@ class EmulatorActivity : AppCompatActivity() {
         bindButton(R.id.btnStart, NativeBridge.Button.START)
         bindButton(R.id.btnSelect, NativeBridge.Button.SELECT)
 
-        findViewById<android.widget.Button>(R.id.btnLab).setOnClickListener {
-            openLab()
-        }
-
-        // Capture toggle: turn CDL recording on/off. Starts ON (capture from
-        // frame 1). Turning it off freezes the captured set so you can then
-        // use Sandbox to replay only what you captured.
-        val captureBtn = findViewById<android.widget.Button>(R.id.btnCapture)
-        captureBtn.text = if (NativeBridge.nativeIsCdlRecording()) "● Capturar: ON" else "○ Capturar: OFF"
-        captureBtn.setOnClickListener {
-            val turnOn = !NativeBridge.nativeIsCdlRecording()
-            NativeBridge.nativeSetCdlRecording(turnOn)
-            captureBtn.text = if (turnOn) "● Capturar: ON" else "○ Capturar: OFF"
-            Toast.makeText(
-                this,
-                if (turnOn) "Capturando: todo código que o jogo executar está sendo gravado."
-                else "Captura pausada. O que já foi capturado está guardado.",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-
-        // Restart ROM: reset the console to the very beginning, so you can
-        // capture a run from the intro. Optionally clears the captured map.
         findViewById<android.widget.Button>(R.id.btnRestart).setOnClickListener {
-            android.app.AlertDialog.Builder(this)
-                .setTitle("Reiniciar ROM")
-                .setMessage("Reiniciar o jogo do começo. Quer também apagar o que já foi capturado, para gravar uma sessão limpa desde o início?")
-                .setPositiveButton("Reiniciar e limpar captura") { _, _ ->
-                    NativeBridge.nativeResetCdl()
-                    NativeBridge.nativeSetCdlRecording(true)
-                    NativeBridge.nativeSetSandbox(false)
-                    sandboxFrozen = false
-                    NativeBridge.nativeResetEmu()
-                    captureBtn.text = "● Capturar: ON"
-                    findViewById<android.widget.Button>(R.id.btnSandbox).text = "🧪 Sandbox: OFF"
-                    Toast.makeText(this, "Jogo reiniciado, captura zerada e ligada. Jogue para capturar desde o início.", Toast.LENGTH_LONG).show()
-                }
-                .setNegativeButton("Só reiniciar o jogo") { _, _ ->
-                    NativeBridge.nativeSetSandbox(false)
-                    sandboxFrozen = false
-                    NativeBridge.nativeResetEmu()
-                    Toast.makeText(this, "Jogo reiniciado (captura mantida).", Toast.LENGTH_SHORT).show()
-                }
-                .setNeutralButton("Cancelar", null)
-                .show()
+            NativeBridge.nativeResetEmu()
+            Toast.makeText(this, "Jogo reiniciado.", Toast.LENGTH_SHORT).show()
         }
 
-        // Save/Load scene = full save state. Reproduces the whole scene
-        // (all RAM/VRAM/registers), reloads identical and keeps playing.
-        findViewById<android.widget.Button>(R.id.btnSaveState).setOnClickListener {
+        findViewById<android.widget.Button>(R.id.btnTools).setOnClickListener {
+            showToolsMenu()
+        }
+    }
+
+    private fun showToolsMenu() {
+        val recording = NativeBridge.nativeIsCdlRecording()
+        val options = arrayOf(
+            "🔬 Lab — código capturado (disasm + editar/testar)",
+            "🎨 Ripar sprites da cena atual",
+            "🧠 Explorador de RAM (buscar valores)",
+            if (recording) "⏸ Pausar captura de código" else "● Retomar captura de código",
+            "🗑 Zerar captura de código"
+        )
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Ferramentas")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> openLab()
+                    1 -> ripSprites()
+                    2 -> startActivity(android.content.Intent(this, RamExplorerActivity::class.java))
+                    3 -> {
+                        val turnOn = !NativeBridge.nativeIsCdlRecording()
+                        NativeBridge.nativeSetCdlRecording(turnOn)
+                        Toast.makeText(this, if (turnOn) "Captura retomada." else "Captura pausada.", Toast.LENGTH_SHORT).show()
+                    }
+                    4 -> {
+                        NativeBridge.nativeResetCdl()
+                        Toast.makeText(this, "Captura de código zerada.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun ripSprites() {
+        try {
+            val oam = NativeBridge.nativeGetOam()
+            val vram = NativeBridge.nativeGetVram()
+            val cgram = NativeBridge.nativeGetCgram()
+            val nameBase = NativeBridge.nativeGetObjNameBase()
+            val nameSelect = NativeBridge.nativeGetObjNameSelect()
+            val sizeSelect = NativeBridge.nativeGetObjSizeSelect()
+            Toast.makeText(this, "Capturando sprites…", Toast.LENGTH_SHORT).show()
             thread {
-                val state = try { NativeBridge.nativeSaveState() } catch (t: Throwable) { ByteArray(0) }
+                val groups = SpriteRipper.ripGroups(oam, vram, cgram, nameBase, nameSelect, sizeSelect)
                 runOnUiThread {
-                    if (state.isNotEmpty()) {
-                        savedState = state
-                        Toast.makeText(this, "Cena salva (${state.size / 1024} KB). Use ▶ Carregar cena para voltar exatamente aqui.", Toast.LENGTH_LONG).show()
+                    if (groups.isEmpty()) {
+                        Toast.makeText(this, "Nenhum sprite visível na cena agora.", Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(this, "Não consegui salvar a cena.", Toast.LENGTH_SHORT).show()
+                        com.diogo.snesdeco.emu.SpriteCapture.groups = groups
+                        com.diogo.snesdeco.emu.SpriteCapture.cgram = cgram
+                        startActivity(android.content.Intent(this, SpriteViewerActivity::class.java))
                     }
                 }
             }
-        }
-
-        findViewById<android.widget.Button>(R.id.btnLoadState).setOnClickListener {
-            val state = savedState
-            if (state == null) {
-                Toast.makeText(this, "Nenhuma cena salva ainda. Use 📸 Salvar cena primeiro.", Toast.LENGTH_SHORT).show()
-            } else {
-                thread {
-                    val ok = try { NativeBridge.nativeLoadState(state) } catch (t: Throwable) { false }
-                    runOnUiThread {
-                        Toast.makeText(this, if (ok) "Cena recarregada — idêntica, jogável a partir daqui." else "Falha ao carregar a cena.", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }
-
-        val sandboxBtn = findViewById<android.widget.Button>(R.id.btnSandbox)
-        sandboxBtn.setOnClickListener {
-            // If currently frozen at the boundary, this tap exits the freeze
-            // and turns sandbox off so the game runs normally again.
-            if (sandboxFrozen) {
-                NativeBridge.nativeSetSandbox(false)
-                NativeBridge.nativeClearBoundary()
-                sandboxFrozen = false
-                sandboxBtn.text = "🧪 Sandbox: OFF"
-                Toast.makeText(this, "Descongelado. ROM roda normal de novo.", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            val turnOn = !NativeBridge.nativeIsSandbox()
-            if (turnOn) {
-                // Sandbox watches from the CURRENT scene forward (which is
-                // already captured, since you're seeing it). We deliberately
-                // do NOT reset here - resetting would re-run the boot path,
-                // which a short capture may not fully cover. Watching from the
-                // live scene means the game keeps playing normally and only
-                // freezes if you steer it into genuinely uncaptured territory.
-                NativeBridge.nativeSetCdlRecording(false)
-                NativeBridge.nativeClearBoundary()
-                NativeBridge.nativeSetSandbox(true)
-                sandboxFrozen = false
-                sandboxBtn.text = "🧪 Sandbox: ON"
-                findViewById<android.widget.Button>(R.id.btnCapture).text = "○ Capturar: OFF"
-                Toast.makeText(
-                    this,
-                    "Sandbox ligado a partir desta cena. O jogo continua rodando; vai congelar só se entrar em código que você ainda não capturou (ex: uma tela nova).",
-                    Toast.LENGTH_LONG
-                ).show()
-            } else {
-                NativeBridge.nativeSetSandbox(false)
-                sandboxFrozen = false
-                sandboxBtn.text = "🧪 Sandbox: OFF"
-                Toast.makeText(this, "Sandbox desligado: ROM roda normal de novo.", Toast.LENGTH_SHORT).show()
-            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Erro ao capturar sprites: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 

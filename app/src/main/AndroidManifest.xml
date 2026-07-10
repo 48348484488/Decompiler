@@ -45,6 +45,11 @@
             android:exported="false"
             android:label="Lab" />
 
+        <activity
+            android:name=".ui.RamExplorerActivity"
+            android:exported="false"
+            android:label="Explorador de RAM" />
+
     </application>
 
 </manifest>
