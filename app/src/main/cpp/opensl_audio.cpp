@@ -96,14 +96,29 @@ bool SndOpenSLInit(int sampleRate) {
 }
 
 // Queue interleaved stereo int16 samples for playback.
+static volatile int g_lastPeak = 0;
+static volatile long g_totalEnqueued = 0;
+
 void SndOpenSLEnqueue(const int16_t *samples, int count) {
     if (!running || count <= 0) return;
+    // Track peak amplitude of what we actually receive, for diagnostics.
+    int peak = 0;
+    for (int i = 0; i < count; i++) {
+        int a = samples[i] < 0 ? -samples[i] : samples[i];
+        if (a > peak) peak = a;
+    }
+    g_lastPeak = peak;
+    g_totalEnqueued += count;
+
     std::lock_guard<std::mutex> lock(ringMutex);
     // Cap backlog so we don't build unbounded latency if the game outpaces out.
     const size_t MAX_BACKLOG = 48000 * 2 / 2; // ~0.5s stereo
     if (pending.size() > MAX_BACKLOG) pending.clear();
     pending.insert(pending.end(), samples, samples + count);
 }
+
+int SndOpenSLLastPeak() { return g_lastPeak; }
+long SndOpenSLTotalEnqueued() { return g_totalEnqueued; }
 
 void SndOpenSLShutdown() {
     {

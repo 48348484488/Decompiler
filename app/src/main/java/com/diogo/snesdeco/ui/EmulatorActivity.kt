@@ -22,6 +22,7 @@ class EmulatorActivity : AppCompatActivity() {
 
     @Volatile private var audioReady = false
     @Volatile private var turboActive = false
+    private var audioDiagShown = false
 
     @Volatile private var running = false
     private var loopThread: Thread? = null
@@ -110,6 +111,20 @@ class EmulatorActivity : AppCompatActivity() {
                 frameCounter++
                 if (frameCounter % 15 == 0) {
                     updateReadouts()
+                }
+
+                // One-time definitive audio diagnostic at ~3s.
+                if (!audioDiagShown && frameCounter >= 180) {
+                    audioDiagShown = true
+                    val peak = NativeBridge.nativeAudioPeak()
+                    val totalK = NativeBridge.nativeAudioTotalK()
+                    runOnUiThread {
+                        Toast.makeText(
+                            this,
+                            "ÁUDIO: init=$audioReady | pico=$peak (0=silêncio) | ${totalK}K amostras enviadas ao OpenSL",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 }
 
                 // Full-capture mode: every ~5s snapshot sprites+palette and

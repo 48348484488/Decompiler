@@ -38,6 +38,8 @@ object NativeBridge {
     external fun nativeAudioInit(sampleRate: Int): Boolean
     external fun nativeAudioPump()
     external fun nativeAudioShutdown()
+    external fun nativeAudioPeak(): Int
+    external fun nativeAudioTotalK(): Int
     // Live RAM explorer + value search (Cheat-Engine style)
     external fun nativeReadRam(offset: Int, length: Int): ByteArray
     external fun nativeWriteRam(offset: Int, value: Int): Int

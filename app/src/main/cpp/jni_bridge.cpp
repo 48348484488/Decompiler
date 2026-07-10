@@ -415,6 +415,22 @@ Java_com_diogo_snesdeco_emu_NativeBridge_nativeCapturedBytes(JNIEnv *, jobject)
 extern "C" bool SndOpenSLInit(int sampleRate);
 extern "C" void SndOpenSLEnqueue(const int16_t *samples, int count);
 extern "C" void SndOpenSLShutdown();
+extern "C" int  SndOpenSLLastPeak();
+extern "C" long SndOpenSLTotalEnqueued();
+
+// Diagnostic: returns [lastPeak, totalEnqueuedThousands] so the app can show
+// definitively whether real (non-silent) audio is reaching the engine.
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeAudioPeak(JNIEnv *, jobject)
+{
+	return (jint) SndOpenSLLastPeak();
+}
+
+JNIEXPORT jint JNICALL
+Java_com_diogo_snesdeco_emu_NativeBridge_nativeAudioTotalK(JNIEnv *, jobject)
+{
+	return (jint) (SndOpenSLTotalEnqueued() / 1000);
+}
 
 JNIEXPORT jboolean JNICALL
 Java_com_diogo_snesdeco_emu_NativeBridge_nativeAudioInit(JNIEnv *, jobject, jint sampleRate)
